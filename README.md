@@ -1,7 +1,7 @@
 # sakuramusic v2
 
 ### ja
-2021/09にqiitaで公開した[記事](https://qiita.com/_yussy_/items/d2d809a2da82c5389966)に記載されていたSakuraMusicというbotをDiscord.js v14で書き直したものです。
+2021/09にqiitaで公開した[記事](https://qiita.com/_yussy_/items/d2d809a2da82c5389966)に記載されていたSakuraMusicというbotをDiscord.js v14で書き直したうえで複数の機能を追加したものです。
 
 #### 動作確認済みの機能
 ・スラッシュコマンドに完全対応  
@@ -12,10 +12,33 @@
 ・キューに曲がある場合は連続再生  
 ・キューに曲がなくなったら自動で切断  
 ・キューの表示  
+・キューのクリア  
 ・現在再生中の曲に関する情報の表示  
 ・曲の存在確認  
-
-#### 動作未確認/修正が必要な機能
+・音量調節  
+・inviteリンクの生成  
+・pingの確認  
+・曲指定スキップ  
+・曲指定スキップの際にもしキューループが有効な場合はスキップした曲をキューの末尾に追加する  
 ・キューのシャッフル  
+
+#### 未実装/動作未確認/修正が必要な機能
+　　
+
+### How2Use
+1: .envというファイルを作成し下記の情報を入力  
+```
+token={DiscordBOTのtoken}
+```
+DiscordBOTのtokenの取得は[developer portal](https://discord.dev)で可能です  
+2 ```npm i```で依存パッケージをダウンロード  
+3 ```node index.js```で起動  
+
+### 動作確認環境
+node 16.15.0  
+npm v9.5.0  
+discord.js 14.11.0  
+@discordjs/voice 0.16.0  
+windowsとlinux(ubuntu)で動作確認済み  
 
 

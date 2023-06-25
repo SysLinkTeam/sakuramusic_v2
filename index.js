@@ -142,9 +142,9 @@ client.on('interactionCreate', async interaction => {
     switch (interaction.commandName) {
         case 'play':
             var voiceChannel = interaction.member.voice.channel;
-            
+
             if (!voiceChannel) return interaction.followUp('You need to be in a voice channel to play music!');
-            
+
             var permissions = voiceChannel.permissionsFor(interaction.client.user);
 
             if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
@@ -155,7 +155,7 @@ client.on('interactionCreate', async interaction => {
             });
 
             if (!songInfo) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
-            
+
             var song = {
                 title: songInfo.videoDetails.title,
                 url: songInfo.videoDetails.video_url,
@@ -398,8 +398,8 @@ client.on('interactionCreate', async interaction => {
             var serverQueue = queue.get(interaction.guild.id);
             if (!serverQueue) return interaction.followUp('There is no song that I could shuffle!');
             if (serverQueue.songs.length < 3) return interaction.followUp('There must be at least 3 songs in the queue to shuffle it!');
-            for (var i = serverQueue.songs.length - 1; i > 1; i--) {
-                var j = 1 + Math.floor(Math.random() * i);
+            for (let i = serverQueue.songs.length - 1; i > 1; i--) {
+                const j = 1 + Math.floor(Math.random() * i);
                 [serverQueue.songs[i], serverQueue.songs[j]] = [serverQueue.songs[j], serverQueue.songs[i]];
             }
             interaction.followUp('Shuffled the queue!');
@@ -410,7 +410,8 @@ client.on('interactionCreate', async interaction => {
             if (!serverQueue) return interaction.followUp('There is no song that I could skip to!');
             if (!interaction.options.getString('songnumber')) return interaction.followUp('Please enter a song number!');
             if (interaction.options.getString('songnumber') > serverQueue.songs.length || interaction.options.getString('songnumber') < 1) return interaction.followUp('Please enter a valid song number!');
-            serverQueue.songs.splice(0, interaction.options.getString('songnumber') - 1);
+            var removed = serverQueue.songs.splice(0, interaction.options.getString('songnumber') - 1);
+            if(serverQueue.queueloop === true) serverQueue.push(removed);
             serverQueue.player.stop();
             interaction.followUp(`I skipped to the song number: **${interaction.options.getString('songnumber')}**`);
             break;
@@ -443,7 +444,7 @@ client.on('interactionCreate', async interaction => {
             var serverQueue = queue.get(interaction.guild.id);
             if (!serverQueue) return interaction.followUp('There is no song that I could clear!');
             serverQueue.songs = [];
-            serverQueue.connection.dispatcher.end();
+            serverQueue.player.stop();
             interaction.followUp('Cleared the queue!');
             break;
 
@@ -456,7 +457,8 @@ client.on('interactionCreate', async interaction => {
                     iconURL: client.user.displayAvatarURL(),
                 })
                 .setColor('#ff0000')
-            return interaction.followUp({ embeds: [embed] });
+            interaction.followUp({ embeds: [embed] });
+            break;
     }
 });
 
@@ -481,7 +483,7 @@ async function play(guild, song, interaction = null) {
 
     var player = createAudioPlayer({
         behaviors: {
-            noSubscriber: NoSubscriberBehavior.Pause,
+            noSubscriber: NoSubscriberBehavior.Stop,
         },
     });
 
@@ -501,9 +503,9 @@ async function play(guild, song, interaction = null) {
         }
         play(guild, serverQueue.songs[0], interaction);
     })
-        .on('error', error => {
-            console.error(error)
-        });
+    .on('error', error => {
+        console.error(error)
+    });
 
     var embed = new EmbedBuilder()
         .setTitle('Now Playing')
