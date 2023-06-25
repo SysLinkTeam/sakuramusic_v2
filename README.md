@@ -19,8 +19,3 @@
 ・キューのシャッフル  
 
 
-#### 仕様イメージ
-![play](https://github.com/SysLinkTeam/sakuramusic_v2/assets/59718878/44929214-3d37-4a9b-aa03-79f84100da63)  
-![nowplaying](https://github.com/SysLinkTeam/sakuramusic_v2/assets/59718878/471e7483-72f5-41fa-9dd3-58d8505ef2a6)  
-![loop&volume](https://github.com/SysLinkTeam/sakuramusic_v2/assets/59718878/217b0245-9e10-4e85-884f-a63883748fc9)  
-![pause&resume&stop](https://github.com/SysLinkTeam/sakuramusic_v2/assets/59718878/8ee1b26d-8475-4310-8d20-35fcf25d1bca)  
