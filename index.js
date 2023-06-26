@@ -199,7 +199,6 @@ client.on('interactionCreate', async interaction => {
                     voiceChannel: voiceChannel,
                     connection: null,
                     songs: [],
-                    volume: 5,
                     playing: true,
                     loop: false,
                     queueloop: false,
@@ -390,8 +389,7 @@ client.on('interactionCreate', async interaction => {
             if (!serverQueue) return interaction.followUp('There is no song that I could change volume!');
             if (!interaction.options.getString('volume')) return interaction.followUp(`The current volume is: **${serverQueue.volume}**`);
             if (interaction.options.getString('volume') > 10 || interaction.options.getString('volume') < 1) return interaction.followUp('Please enter a number between 1 and 10!');
-            serverQueue.volume = interaction.options.getString('volume');
-            serverQueue.resource.volume.setVolume(interaction.options.getString('volume') / 5);
+            serverQueue.resource.volume.setVolume(interaction.options.getString('volume') / 10);
             interaction.followUp(`I set the volume to: **${interaction.options.getString('volume')}**`);
             break;
 
