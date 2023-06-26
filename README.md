@@ -19,7 +19,8 @@
 ・pingの確認  
 ・曲指定スキップ  
 ・曲指定スキップの際にもしキューループが有効な場合はスキップした曲をキューの末尾に追加する  
-・キューのシャッフル  
+・キューのシャッフル 
+・プレイリストのサポート  
 
 #### 未実装/動作未確認/修正が必要な機能
 　　
@@ -65,6 +66,7 @@ The bot called SakuraMusic described in [article](https://qiita.com/_yussy_/item
 ・Skip to a specific song  
 ・If a queue loop is enabled when a song is skipped, the skipped song will be added to the end of the queue.  
 ・Shuffle queue  
+・playlist support  
 
 #### Features not yet implemented/not yet tested/need to be fixed
 
