@@ -130,6 +130,10 @@ var commandList = [
 ];
 
 
+process.on('uncaughtException', async function (err) {
+    console.error(err);
+});
+
 client.once('ready', () => {
     console.log('SakuraMusic v2 is now online!');
     client.user.setActivity('SakuraMusic v2 | /help', { type: 'LISTENING' });
