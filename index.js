@@ -249,7 +249,7 @@ client.on('interactionCreate', async interaction => {
             var serverQueue = queue.get(interaction.guild.id);
             if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to stop the music!');
             serverQueue.songs = [];
-            serverQueue.connection.destroy();
+            serverQueue.player.stop();
             interaction.followUp('Stopped the music!');
             break;
 
