@@ -1,6 +1,7 @@
 var { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
 var { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior } = require('@discordjs/voice');
 var ytdl = require('ytdl-core');
+var ytpl = require('ytpl');
 require('dotenv').config();
 
 var client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -141,6 +142,7 @@ client.on('interactionCreate', async interaction => {
 
     switch (interaction.commandName) {
         case 'play':
+
             var voiceChannel = interaction.member.voice.channel;
 
             if (!voiceChannel) return interaction.followUp('You need to be in a voice channel to play music!');
@@ -150,63 +152,85 @@ client.on('interactionCreate', async interaction => {
             if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
                 return interaction.followUp("I need the permissions to join and speak in your voice channel!");
             }
-            var songInfo = await ytdl.getInfo(interaction.options.getString('url')).catch(error => {
-                interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
-            });
 
-            if (!songInfo) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+            var musiclist = [];
 
-            var song = {
-                title: songInfo.videoDetails.title,
-                url: songInfo.videoDetails.video_url,
-                totalsec: songInfo.videoDetails.lengthSeconds,
-                viewcount: songInfo.videoDetails.viewCount,
-                author: {
-                    name: songInfo.videoDetails.author.name,
-                    url: songInfo.videoDetails.author.channel_url,
-                    subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                    verified: songInfo.videoDetails.author.verified
-                },
-                thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-            };
 
-            var queueContruct = {
-                textChannel: interaction.channel,
-                voiceChannel: voiceChannel,
-                connection: null,
-                songs: [],
-                volume: 5,
-                playing: true,
-                loop: false,
-                queueloop: false,
-                starttimestamp: 0,
-                player: null,
-                resource: null,
-                paused: false
-            };
+            if (interaction.options.getString('url').includes('list=')) {
+                var playlist = await ytpl(interaction.options.getString('url')).catch(error => {
+                    interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                });
 
-            var serverQueue = queue.get(interaction.guild.id);
+                if (!playlist) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
 
-            if (!serverQueue) {
-                queue.set(interaction.guild.id, queueContruct);
-                queueContruct.songs.push(song);
-                try {
-                    var connection = await joinVoiceChannel({
-                        channelId: voiceChannel.id,
-                        guildId: voiceChannel.guild.id,
-                        adapterCreator: voiceChannel.guild.voiceAdapterCreator
-                    });
-                    queueContruct.connection = connection;
-                    play(interaction.guild, queueContruct.songs[0], interaction);
-                } catch (err) {
-                    console.log(err);
-                    queue.devar(interaction.guild.id);
-                    return interaction.followUp(err);
+                for (var j = 0; j < playlist.items.length; j++) {
+                    musiclist.push(playlist.items[j].url)
                 }
             } else {
-                serverQueue.songs.push(song);
-                return interaction.followUp(`${song.title} has been added to the queue!`);
+                musiclist.push(interaction.options.getString('url'))
             }
+            var songs = [];
+            for (var i = 0; i < musiclist.length; i++) {
+                var songInfo = await ytdl.getInfo(musiclist[i]).catch(error => {
+                    interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                });
+
+                if (!songInfo) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+
+                var song = {
+                    title: songInfo.videoDetails.title,
+                    url: songInfo.videoDetails.video_url,
+                    totalsec: songInfo.videoDetails.lengthSeconds,
+                    viewcount: songInfo.videoDetails.viewCount,
+                    author: {
+                        name: songInfo.videoDetails.author.name,
+                        url: songInfo.videoDetails.author.channel_url,
+                        subscriber_count: songInfo.videoDetails.author.subscriber_count,
+                        verified: songInfo.videoDetails.author.verified
+                    },
+                    thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
+                };
+
+                var queueContruct = {
+                    textChannel: interaction.channel,
+                    voiceChannel: voiceChannel,
+                    connection: null,
+                    songs: [],
+                    volume: 5,
+                    playing: true,
+                    loop: false,
+                    queueloop: false,
+                    starttimestamp: 0,
+                    player: null,
+                    resource: null,
+                    paused: false
+                };
+
+                var serverQueue = queue.get(interaction.guild.id);
+
+                if (!serverQueue) {
+                    queue.set(interaction.guild.id, queueContruct);
+                    queueContruct.songs.push(song);
+                    try {
+                        var connection = await joinVoiceChannel({
+                            channelId: voiceChannel.id,
+                            guildId: voiceChannel.guild.id,
+                            adapterCreator: voiceChannel.guild.voiceAdapterCreator
+                        });
+                        queueContruct.connection = connection;
+                        play(interaction.guild, queueContruct.songs[0], interaction);
+                    } catch (err) {
+                        console.log(err);
+                        queue.delete(interaction.guild.id);
+                        return interaction.followUp(err);
+                    }
+                } else {
+                    serverQueue.songs.push(song);
+                    songs.push(song.title);
+                }
+            }
+            if (musiclist.length == 1) return interaction.followUp(`${song.title} has been added to the queue!`);
+            interaction.followUp(`${songs.length} songs have been added to the queue!`);
             break;
 
         case 'skip':
@@ -411,7 +435,7 @@ client.on('interactionCreate', async interaction => {
             if (!interaction.options.getString('songnumber')) return interaction.followUp('Please enter a song number!');
             if (interaction.options.getString('songnumber') > serverQueue.songs.length || interaction.options.getString('songnumber') < 1) return interaction.followUp('Please enter a valid song number!');
             var removed = serverQueue.songs.splice(0, interaction.options.getString('songnumber') - 1);
-            if(serverQueue.queueloop === true) serverQueue.push(removed);
+            if (serverQueue.queueloop === true) serverQueue.push(removed);
             serverQueue.player.stop();
             interaction.followUp(`I skipped to the song number: **${interaction.options.getString('songnumber')}**`);
             break;
@@ -497,9 +521,9 @@ async function play(guild, song, interaction = null) {
         }
         play(guild, serverQueue.songs[0], interaction);
     })
-    .on('error', error => {
-        console.error(error)
-    });
+        .on('error', error => {
+            console.error(error)
+        });
 
     var embed = new EmbedBuilder()
         .setTitle('Now Playing')
