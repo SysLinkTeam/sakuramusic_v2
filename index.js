@@ -223,6 +223,7 @@ client.on('interactionCreate', async interaction => {
                         });
                         queueContruct.connection = connection;
                         play(interaction.guild, queueContruct.songs[0], interaction);
+                        if(musiclist.length > 1) interaction.followUp(`adding ${musiclist.length} songs to the queue!`);
                     } catch (err) {
                         console.log(err);
                         queue.delete(interaction.guild.id);
