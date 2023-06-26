@@ -472,12 +472,6 @@ async function play(guild, song, interaction = null) {
     }
 
     var stream = ytdl(song.url, {
-        filter: 'audioonly',
-        fmt: 'mp3',
-        highWaterMark: 1 << 30,
-        liveBuffer: 20000,
-        dlChunkSize: 4096,
-        bitrate: 384,
         quality: 'highestaudio'
     });
 
