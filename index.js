@@ -167,9 +167,8 @@ client.on('interactionCreate', async interaction => {
 
                 if (!playlist) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
 
-                for (var j = 0; j < playlist.items.length; j++) {
-                    musiclist.push(playlist.items[j].url)
-                }
+                musiclist.push(playlist.items.map(x => x.url))
+                
             } else {
                 musiclist.push(interaction.options.getString('url'))
             }
