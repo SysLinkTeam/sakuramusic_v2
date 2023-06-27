@@ -257,17 +257,20 @@ if (cluster.isPrimary) {
                 let followUped = false;
 
                 const online_handler = (worker) => {
+                    if(musiclist.length <= 0) return;
                     worker.send(next);
                     active[token]++;
                     Index[token]++;
                     next = [musiclist.shift(), Index[token], token];
                 }
                 const message_handler = async (worker, message) => {
-                    console.log("c: "+ count[message.token]);
-                    console.log("a:" + active[message.token]);
                     if (message.type == "end") {
-                        if (musiclist.length == 0) {
-                            active[message.token]--;
+                        if(message.token != token) return;
+                        temp[message.token].push({ song: message.song, index: message.index });
+                        count[message.token]++;
+
+                        if (musiclist.length <= 0) {
+                            active[message.token]--;    
                             if (active[message.token] != 0) return;
                             followUped = true;
 
@@ -278,8 +281,6 @@ if (cluster.isPrimary) {
                             Index[message.token]++;
                             next = [musiclist.shift(), Index[message.token], message.token];
                         }
-                        temp[message.token].push({ song: message.song, index: message.index });
-                        count[message.token]++;
 
                     } else if (message.type == "error") {
                         if (musiclist.length == 0) {
@@ -294,7 +295,6 @@ if (cluster.isPrimary) {
                             Index[message.token]++;
                             next = [musiclist.shift(), Index[token], token];
                         }
-                        console.log(message.value[0]);
                     }
                 }
                 if (Object.keys(cluster.workers).length == 0) {
