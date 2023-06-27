@@ -273,7 +273,10 @@ if (cluster.isPrimary) {
                             active[message.token]--;    
                             if (active[message.token] != 0) return;
                             followUped = true;
-
+                            delete active[message.token];
+                            delete Index[message.token];
+                            delete count[message.token];
+                            delete temp[message.token];
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
                             return interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
                         } else {
@@ -287,6 +290,10 @@ if (cluster.isPrimary) {
                             active[message.token]--;
                             if (active[message.token] != 0) return;
                             followUped = true;
+                            delete active[message.token];
+                            delete Index[message.token];
+                            delete count[message.token];
+                            delete temp[message.token];
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
 
                             return interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
