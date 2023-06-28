@@ -186,22 +186,22 @@ if (cluster.isPrimary) {
                     musiclist.push(...playlist.items.map(x => x.url))
 
                 } else {
-                    if(!url.includes('youtube.com') || !url.includes('youtu.be/')){
+                    if (!url.includes('youtube.com') || !url.includes('youtu.be/')) {
                         let yt_info = await playdl.search(url, {
                             limit: 1
                         })
-                        if(yt_info.length = 1)  url = yt_info[0].url
+                        if (yt_info.length = 1) url = yt_info[0].url
                     }
                     musiclist.push(url)
                 }
                 songs = [];
                 if (!serverQueue) {
-                    
+
                     songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
-                        
+
                     });
 
-                    if (!songInfo){
+                    if (!songInfo) {
                         return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                     }
 
@@ -267,7 +267,7 @@ if (cluster.isPrimary) {
                 let followUped = false;
 
                 const online_handler = (worker) => {
-                    if(musiclist.length <= 0) return;
+                    if (musiclist.length <= 0) return;
                     worker.send(next);
                     active[token]++;
                     Index[token]++;
@@ -275,12 +275,12 @@ if (cluster.isPrimary) {
                 }
                 const message_handler = async (worker, message) => {
                     if (message.type == "end") {
-                        if(message.token != token) return;
+                        if (message.token != token) return;
                         temp[message.token].push({ song: message.song, index: message.index });
                         count[message.token]++;
 
                         if (musiclist.length <= 0) {
-                            active[message.token]--;    
+                            active[message.token]--;
                             if (active[message.token] != 0) return;
                             followUped = true;
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
@@ -289,7 +289,7 @@ if (cluster.isPrimary) {
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
-                            return 
+                            return
                         } else {
                             worker.send(next);
                             Index[message.token]++;
@@ -307,7 +307,7 @@ if (cluster.isPrimary) {
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
-                            return 
+                            return
                         } else {
                             worker.send(next);
                             Index[message.token]++;
@@ -319,7 +319,7 @@ if (cluster.isPrimary) {
                     for (i = 0; i < numCPUs; i++) {
                         cluster.fork();
                     }
-                }else{
+                } else {
                     for (const worker in cluster.workers) {
                         online_handler(cluster.workers[worker]);
                     }
@@ -594,7 +594,7 @@ if (cluster.isPrimary) {
             return;
         }
 
-        
+
         let stream = await playdl.stream(song.url)
 
         player = createAudioPlayer({
@@ -603,7 +603,7 @@ if (cluster.isPrimary) {
             },
         });
 
-        resource = createAudioResource(stream.stream, { inlineVolume: true , inputType: stream.type});
+        resource = createAudioResource(stream.stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
