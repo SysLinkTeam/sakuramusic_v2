@@ -31,8 +31,8 @@ if (cluster.isPrimary) {
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
-                    name: 'url',
-                    description: 'Youtube URL',
+                    name: 'video info',
+                    description: 'Youtube URL or Search Query',
                     type: ApplicationCommandOptionType.String,
                     required: true
                 }
