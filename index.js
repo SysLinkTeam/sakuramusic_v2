@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, Applica
 const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
+const YTDlpWrap = require('yt-dlp-wrap').default;
 const cluster = require('cluster');
 const { cpus } = require('os');
 const { count } = require('console');
@@ -11,6 +12,18 @@ const ee = new EventEmitter();
 const numCPUs = cpus().length;
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
+
+if(process.platform==='win32'){
+    ytDlpWrap = new YTDlpWrap('./yt-dlp.exe');
+}
+else if(process.platform==='linux')
+{
+    ytDlpWrap = new YTDlpWrap('./yt-dlp');
+} 
+else {
+    console.log('Unsupported platform');
+    process.exit(1);
+}
 
 if (cluster.isPrimary) {
     let temp = {};
@@ -583,9 +596,12 @@ if (cluster.isPrimary) {
             return;
         }
 
-        stream = ytdl(song.url, {
-            quality: 'highestaudio'
-        });
+        
+        let stream = ytDlpWrap.execStream([
+            song.url,
+            '-f',
+            'bestaudio[ext=webm]',
+        ]);
 
         player = createAudioPlayer({
             behaviors: {
