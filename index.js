@@ -31,7 +31,7 @@ if (cluster.isPrimary) {
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
-                    name: 'video info',
+                    name: 'video_info',
                     description: 'Youtube URL or Search Query',
                     type: ApplicationCommandOptionType.String,
                     required: true
@@ -174,7 +174,7 @@ if (cluster.isPrimary) {
 
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
-                url = interaction.options.getString('url');
+                url = interaction.options.getString('video_info');
                 if (url.includes('list=')) {
                     playlist = await ytpl(url).catch(error => {
                         console.log(error)
@@ -585,6 +585,17 @@ if (cluster.isPrimary) {
         }
     });
 
+    client.on('voiceStateUpdate', async (oldState, newState) => {
+        if (!oldState.member.user.bot && oldState.channelId !=null && newState.channelId === null && oldState.channel.members.size === 1) {
+            serverQueue = queue.get(oldState.guild.id);
+            if (!serverQueue) return;
+            serverQueue.songs = [];
+            serverQueue.player.stop();
+            serverQueue.textChannel.send('Everyone left the voice channel, so I left the voice channel as well!');
+        }
+    });
+
+
     async function play(guild, song, interaction = null) {
         serverQueue = queue.get(guild.id);
 
@@ -593,7 +604,6 @@ if (cluster.isPrimary) {
             queue.delete(guild.id);
             return;
         }
-
 
         let stream = await playdl.stream(song.url)
 
