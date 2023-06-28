@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, Applica
 const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
-const YTDlpWrap = require('yt-dlp-wrap').default;
+const playdl = require("play-dl")
 const cluster = require('cluster');
 const { cpus } = require('os');
 const { count } = require('console');
@@ -13,17 +13,6 @@ const numCPUs = cpus().length;
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
 
-if(process.platform==='win32'){
-    ytDlpWrap = new YTDlpWrap('./yt-dlp.exe');
-}
-else if(process.platform==='linux')
-{
-    ytDlpWrap = new YTDlpWrap('./yt-dlp');
-} 
-else {
-    console.log('Unsupported platform');
-    process.exit(1);
-}
 
 if (cluster.isPrimary) {
     let temp = {};
@@ -185,9 +174,9 @@ if (cluster.isPrimary) {
 
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
-
-                if (interaction.options.getString('url').includes('list=')) {
-                    playlist = await ytpl(interaction.options.getString('url')).catch(error => {
+                url = interaction.options.getString('url');
+                if (url.includes('list=')) {
+                    playlist = await ytpl(url).catch(error => {
                         console.log(error)
                         interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                     });
@@ -197,16 +186,24 @@ if (cluster.isPrimary) {
                     musiclist.push(...playlist.items.map(x => x.url))
 
                 } else {
-                    musiclist.push(interaction.options.getString('url'))
+                    if(!url.includes('youtube.com') || !url.includes('youtu.be/')){
+                        let yt_info = await playdl.search(url, {
+                            limit: 1
+                        })
+                        if(yt_info.length = 1)  url = yt_info[0].url
+                    }
+                    musiclist.push(url)
                 }
                 songs = [];
                 if (!serverQueue) {
-                    songInfo = await ytdl.getInfo(musiclist.shift()).catch(error => {
-                        console.log(error)
-                        interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                    
+                    songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
+                        
                     });
 
-                    if (!songInfo) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                    if (!songInfo){
+                        return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                    }
 
                     song = {
                         title: songInfo.videoDetails.title,
@@ -287,11 +284,12 @@ if (cluster.isPrimary) {
                             if (active[message.token] != 0) return;
                             followUped = true;
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
+                            interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
                             delete active[message.token];
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
-                            return interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
+                            return 
                         } else {
                             worker.send(next);
                             Index[message.token]++;
@@ -304,11 +302,12 @@ if (cluster.isPrimary) {
                             if (active[message.token] != 0) return;
                             followUped = true;
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
+                            interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
                             delete active[message.token];
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
-                            return interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
+                            return 
                         } else {
                             worker.send(next);
                             Index[message.token]++;
@@ -596,11 +595,7 @@ if (cluster.isPrimary) {
         }
 
         
-        let stream = ytDlpWrap.execStream([
-            song.url,
-            '-f',
-            'bestaudio[ext=webm]',
-        ]);
+        let stream = await playdl.stream(song.url)
 
         player = createAudioPlayer({
             behaviors: {
@@ -608,7 +603,7 @@ if (cluster.isPrimary) {
             },
         });
 
-        resource = createAudioResource(stream, { inlineVolume: true });
+        resource = createAudioResource(stream.stream, { inlineVolume: true , inputType: stream.type});
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
