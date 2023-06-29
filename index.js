@@ -1,20 +1,60 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
-const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
 const playdl = require("play-dl")
 const cluster = require('cluster');
 const { cpus } = require('os');
+const os = require('os');
 const { count } = require('console');
+const cron = require('node-cron');
 const events = require('events');
+const fs = require('fs');
 const EventEmitter = events.EventEmitter;
 const ee = new EventEmitter();
 const numCPUs = cpus().length;
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
 
-
 if (cluster.isPrimary) {
+    cacheEnabled = true;
+    if (process.env.cacheEnabled == "false") {
+        cacheEnabled = false;
+        console.log("-------Cache is disabled-------")
+        console.log("Cache will not be saved")
+        console.log("Cache will not be loaded on startup")
+        console.log("It may increase response time but it will reduce RAM usage")
+        console.log("If you want to enable cache, set cacheEnabled to true in .env")
+        console.log("-------------------------------")
+    }
+    if (cacheEnabled) {
+        console.log("-------Cache is enabled-------")
+        console.log("Cache will be saved every 10 seconds")
+        console.log("Cache will be loaded on startup")
+        console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time")
+        console.log("If you want to disable cache, set cacheEnabled to false in .env")
+        console.log("-------------------------------")
+    }
+    const replacer = (k, v) => {
+        if (v instanceof Map) {
+            return {
+                dataType: "Map",
+                value: [...v]
+            }
+        }
+        return v
+    }
+    const reviver = (k, v) => {
+        if (typeof v === "object" && v !== null) {
+            if (v.dataType === "Map") {
+                return new Map(v.value)
+            }
+        }
+        return v
+    }
+    let musicInfoCache = new Map();
+    if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify([]))
+    if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
     let temp = {};
     let Index = {};
     let active = {};
@@ -183,7 +223,7 @@ if (cluster.isPrimary) {
 
                     if (!playlist) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
 
-                    musiclist.push(...playlist.items.map(x => x.url))
+                    musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
 
                 } else {
                     if (!url.includes('youtube.com') || !url.includes('youtu.be/')) {
@@ -196,28 +236,31 @@ if (cluster.isPrimary) {
                 }
                 songs = [];
                 if (!serverQueue) {
+                    if (!musicInfoCache.has(musiclist[0])) {
+                        songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
+                        });
 
-                    songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
+                        if (!songInfo) {
+                            return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                        }
+                        song = {
+                            title: songInfo.videoDetails.title,
+                            url: songInfo.videoDetails.video_url,
+                            totalsec: songInfo.videoDetails.lengthSeconds,
+                            viewcount: songInfo.videoDetails.viewCount,
+                            author: {
+                                name: songInfo.videoDetails.author.name,
+                                url: songInfo.videoDetails.author.channel_url,
+                                subscriber_count: songInfo.videoDetails.author.subscriber_count,
+                                verified: songInfo.videoDetails.author.verified
+                            },
+                            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
+                        };
 
-                    });
-
-                    if (!songInfo) {
-                        return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                        if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song)
+                    } else {
+                        song = musicInfoCache.get(musiclist.shift())
                     }
-
-                    song = {
-                        title: songInfo.videoDetails.title,
-                        url: songInfo.videoDetails.video_url,
-                        totalsec: songInfo.videoDetails.lengthSeconds,
-                        viewcount: songInfo.videoDetails.viewCount,
-                        author: {
-                            name: songInfo.videoDetails.author.name,
-                            url: songInfo.videoDetails.author.channel_url,
-                            subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                            verified: songInfo.videoDetails.author.verified
-                        },
-                        thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-                    };
 
                     queueContruct = {
                         textChannel: interaction.channel,
@@ -255,6 +298,7 @@ if (cluster.isPrimary) {
                     songs.push(song.title);
                 }
                 if (musiclist.length == 0) return interaction.followUp(`${song.title} has been added to the queue!`);
+                interaction.followUp(`We are now adding ${musiclist.length - 1} songs to the queue.\nPleas wait a moment...\nIt may take a while to add songs to the queue.`);
 
                 let token = Math.random().toString(36).slice(-8);
 
@@ -268,6 +312,13 @@ if (cluster.isPrimary) {
 
                 const online_handler = (worker) => {
                     if (musiclist.length <= 0) return;
+                    if (musicInfoCache.has(musiclist[0])) {
+                        song = musicInfoCache.get(musiclist.shift())
+                        temp[token].push({ song: song, index: Index[token] });
+                        Index[token]++;
+                        count[token]++;
+                        return online_handler(worker);
+                    }
                     worker.send(next);
                     active[token]++;
                     Index[token]++;
@@ -277,6 +328,7 @@ if (cluster.isPrimary) {
                     if (message.type == "end") {
                         if (message.token != token) return;
                         temp[message.token].push({ song: message.song, index: message.index });
+                        if (cacheEnabled) musicInfoCache.set(message.song.url, message.song);
                         count[message.token]++;
 
                         if (musiclist.length <= 0) {
@@ -284,13 +336,19 @@ if (cluster.isPrimary) {
                             if (active[message.token] != 0) return;
                             followUped = true;
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
-                            interaction.followUp(`Added ${count[message.token]} songs to the queue!`);
+                            serverQueue.textChannel.send(`Added ${count[message.token]} songs to the queue!`);
                             delete active[message.token];
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
                             return
                         } else {
+                            if (musicInfoCache.has(musiclist[0])) {
+                                song = musicInfoCache.get(musiclist.shift())
+                                Index[token]++;
+                                count[token]++;
+                                return message_handler(worker, { type: "end", token: token, song: song, index: Index[token] - 1 });
+                            }
                             worker.send(next);
                             Index[message.token]++;
                             next = [musiclist.shift(), Index[message.token], message.token];
@@ -309,6 +367,12 @@ if (cluster.isPrimary) {
                             delete temp[message.token];
                             return
                         } else {
+                            if (musicInfoCache.has(musiclist[0])) {
+                                song = musicInfoCache.get(musiclist.shift())
+                                Index[token]++;
+                                count[token]++;
+                                return message_handler(worker, { type: "end", token: token, song: song, index: Index[token] - 1 });
+                            }
                             worker.send(next);
                             Index[message.token]++;
                             next = [musiclist.shift(), Index[token], token];
@@ -586,11 +650,12 @@ if (cluster.isPrimary) {
     });
 
     client.on('voiceStateUpdate', async (oldState, newState) => {
-        if (!oldState.member.user.bot && oldState.channelId !=null && newState.channelId === null && oldState.channel.members.size === 1) {
+        if (!oldState.member.user.bot && oldState.channelId != null && newState.channelId === null && oldState.channel.members.size === 1) {
             serverQueue = queue.get(oldState.guild.id);
             if (!serverQueue) return;
             serverQueue.songs = [];
             serverQueue.player.stop();
+            serverQueue.connection.destroy();
             serverQueue.textChannel.send('Everyone left the voice channel, so I left the voice channel as well!');
         }
     });
@@ -598,9 +663,10 @@ if (cluster.isPrimary) {
 
     async function play(guild, song, interaction = null) {
         serverQueue = queue.get(guild.id);
+        if (!serverQueue) return;
 
         if (!song) {
-            serverQueue.connection.destroy();
+            if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
             queue.delete(guild.id);
             return;
         }
@@ -641,9 +707,28 @@ if (cluster.isPrimary) {
                 iconURL: client.user.displayAvatarURL(),
             })
             .setColor('#ff0000')
-        interaction.followUp({ embeds: [embed] });
+        serverQueue.textChannel.send({ embeds: [embed] });
         serverQueue.starttimestamp = Date.now();
     }
+
+    cron.schedule('*/10 * * * * *', async () => {
+        if (cacheEnabled === false) return;
+        fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => {if (err) console.error(err)});
+        let totalmemory = os.totalmem()
+        let usedmemory = os.totalmem() - os.freemem()
+        if (usedmemory / totalmemory > 0.8) {
+            musicInfoCache = new Map();
+            console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            console.error("Cleared cache because of memory usage being too high.")
+            console.error(`Total memory: ${Math.floor(totalmemory / 1024 / 1024 / 1024)} GB`)
+            console.error(`Used memory: ${Math.floor(usedmemory / 1024 / 1024 / 1024)} GB`)
+            console.error(`Percentage: ${Math.floor((usedmemory / totalmemory) * 100)}%`)
+            console.error(`Caching has been disabled.`)
+            console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            cacheEnabled = false;
+        }
+    });
+
 
     client.login(token);
 

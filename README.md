@@ -26,6 +26,9 @@
 ・プレイリストのサポート(v1.1.0以降から正式サポート)
 ・youtube APIを使用しない曲の検索機能(v1.2.0以降から正式サポート)  
 ・VCに参加している人が0人になったら自動で退出(v1.2.0以降から正式サポート)  
+・一度取得したデータを保持しておくことで再取得の手間をなくしネットワーク負荷の軽減と再生までの時間を高速化(v1.3.0以降から正式サポート)
+・メモリがひっ迫した際に自動でキャッシュをクリア(v1.3.0以降から正式サポート)  
+・キャッシュ機能を無効化できるオプション(v1.3.0以降から正式サポート)  
 
 #### 未実装/動作未確認/修正が必要な機能
 
@@ -71,7 +74,12 @@ The bot called SakuraMusic described in [article](https://qiita.com/_yussy_/item
 ・Skip to a specific song  
 ・If a queue loop is enabled when a song is skipped, the skipped song will be added to the end of the queue.  
 ・Shuffle queue  
-・playlist support  
+・playlist support(officially supported since v1.2.0)  
+・Search function for songs without using youtube API (officially supported since v1.2.0)  
+・Automatic exit from VC when the number of participants reaches zero (officially supported since v1.2.0)  
+・Retain data once acquired to reduce network load and speed up playback time (officially supported since v1.3.0)  
+・Automatic cache clearing when memory is overloaded (officially supported since v1.3.0)  
+・Option to disable the cache function (officially supported since v1.3.0)  
 
 #### Features not yet implemented/not yet tested/need to be fixed
 
