@@ -49,6 +49,8 @@ if (cluster.isPrimary) {
             if (v.dataType === "Map") {
                 return new Map(v.value)
             }
+        } else if(v === undefined || v === null) { 
+            return new Map()
         }
         return v
     }
