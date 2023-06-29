@@ -689,6 +689,7 @@ if (cluster.isPrimary) {
         serverQueue.connection.subscribe(player);
 
         player.on(AudioPlayerStatus.Idle, () => {
+            serverQueue = queue.get(guild.id);
             if (serverQueue.loop === false) {
                 if (serverQueue.queueloop === true) {
                     serverQueue.songs.push(serverQueue.songs[0]);
