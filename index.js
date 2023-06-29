@@ -52,7 +52,7 @@ if (cluster.isPrimary) {
         }
         return v
     }
-    let musicInfoCache = new Map();
+    musicInfoCache = new Map();
     if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify([]))
     if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
     let temp = {};
