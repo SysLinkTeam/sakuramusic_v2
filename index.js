@@ -18,12 +18,13 @@ process.env['YTDL_NO_UPDATE'] = true;
 
 if (cluster.isPrimary) {
     cacheEnabled = true;
+    ramUsageReportEnabled = false;
     if (process.env.cacheEnabled == "false") {
         cacheEnabled = false;
         console.log("-------Cache is disabled-------")
         console.log("Cache will not be saved")
         console.log("Cache will not be loaded on startup")
-        console.log("It may increase response time but it will reduce RAM usage")
+        console.log("It may increase response time and Network usage but it will reduce RAM usage")
         console.log("If you want to enable cache, set cacheEnabled to true in .env")
         console.log("-------------------------------")
     }
@@ -31,7 +32,13 @@ if (cluster.isPrimary) {
         console.log("-------Cache is enabled-------")
         console.log("Cache will be saved every 10 seconds")
         console.log("Cache will be loaded on startup")
-        console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time")
+        console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time and reduce Network usage")
+        if(process.env.ramUsageReportEnabled == "true"){
+            console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 10 seconds.")
+            ramUsageReportEnabled = true;
+        }else {
+            console.log("if you want to show RAM usage report, set ramUsageReportEnabled to true in .env")
+        }
         console.log("If you want to disable cache, set cacheEnabled to false in .env")
         console.log("-------------------------------")
     }
@@ -719,6 +726,16 @@ if (cluster.isPrimary) {
         fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => {if (err) console.error(err)});
         let totalmemory = os.totalmem()
         let usedmemory = os.totalmem() - os.freemem()
+        let ramUsage = process.memoryUsage().heapUsed / 1024 / 1024;
+        if(ramUsageReportEnabled){
+            console.log("--------------------ram usage report--------------------")
+            console.log("time: " + new Date().toLocaleString())
+            console.log(`Total memory(machine): ${Math.floor(totalmemory / 1024 / 1024 / 1024)} GB`)
+            console.log(`Used memory(machine): ${Math.floor(usedmemory / 1024 / 1024 / 1024)} GB`)
+            console.log(`RAM Used Percentage(machine): ${Math.floor((usedmemory / totalmemory) * 100)}%`)
+            console.log(`RAM usage(SakuraMusic v2): ${Math.floor(ramUsage)} MB`)
+            console.log("--------------------ram usage report--------------------")
+        }
         if (usedmemory / totalmemory > 0.8) {
             musicInfoCache = new Map();
             console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
