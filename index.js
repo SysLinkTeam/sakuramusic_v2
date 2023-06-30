@@ -19,6 +19,13 @@ process.env['YTDL_NO_UPDATE'] = true;
 if (cluster.isPrimary) {
     cacheEnabled = true;
     ramUsageReportEnabled = false;
+    multiCoreScale = 1;
+    
+    if (process.env.multiCoreScale) {
+        multiCoreScale = parseInt(process.env.multiCoreScale);
+        if (multiCoreScale < 1) multiCoreScale = 1;
+    }
+
     if (process.env.cacheEnabled == "false") {
         cacheEnabled = false;
         console.log("-------Cache is disabled-------")
@@ -225,7 +232,7 @@ if (cluster.isPrimary) {
                 serverQueue = queue.get(interaction.guild.id);
                 url = interaction.options.getString('video_info');
                 if (url.includes('list=')) {
-                    playlist = await ytpl(url).catch(error => {
+                    playlist = await ytpl(url,{limit: Infinity}).catch(error => {
                         console.log(error)
                         interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                     });
@@ -389,7 +396,7 @@ if (cluster.isPrimary) {
                     }
                 }
                 if (Object.keys(cluster.workers).length == 0) {
-                    for (i = 0; i < numCPUs; i++) {
+                    for (i = 0; i < numCPUs *  multiCoreScale; i++) {
                         cluster.fork();
                     }
                 } else {
