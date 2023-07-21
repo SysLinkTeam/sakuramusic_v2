@@ -75,6 +75,8 @@ if (cluster.isPrimary) {
     let Index = {};
     let active = {};
     let count = {};
+    let allcount = {};
+    let fallcount = {};
     client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
     token = process.env.token
@@ -255,33 +257,33 @@ if (cluster.isPrimary) {
                     musiclist.push(url)
                 }
                 songs = [];
-                if (!serverQueue) {
-                    if (!musicInfoCache.has(musiclist[0])) {
-                        songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
-                        });
+                if (!musicInfoCache.has(musiclist[0])) {
+                    songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
+                    });
 
-                        if (!songInfo) {
-                            return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
-                        }
-                        song = {
-                            title: songInfo.videoDetails.title,
-                            url: songInfo.videoDetails.video_url,
-                            totalsec: songInfo.videoDetails.lengthSeconds,
-                            viewcount: songInfo.videoDetails.viewCount,
-                            author: {
-                                name: songInfo.videoDetails.author.name,
-                                url: songInfo.videoDetails.author.channel_url,
-                                subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                                verified: songInfo.videoDetails.author.verified
-                            },
-                            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-                        };
-
-                        if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song)
-                    } else {
-                        song = musicInfoCache.get(musiclist.shift())
+                    if (!songInfo) {
+                        return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                     }
+                    song = {
+                        title: songInfo.videoDetails.title,
+                        url: songInfo.videoDetails.video_url,
+                        totalsec: songInfo.videoDetails.lengthSeconds,
+                        viewcount: songInfo.videoDetails.viewCount,
+                        author: {
+                            name: songInfo.videoDetails.author.name,
+                            url: songInfo.videoDetails.author.channel_url,
+                            subscriber_count: songInfo.videoDetails.author.subscriber_count,
+                            verified: songInfo.videoDetails.author.verified
+                        },
+                        thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
+                    };
 
+                    if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song)
+                } else {
+                    song = musicInfoCache.get(musiclist.shift())
+                }
+                if (!serverQueue) {
+                    
                     queueContruct = {
                         textChannel: interaction.channel,
                         voiceChannel: voiceChannel,
@@ -320,7 +322,7 @@ if (cluster.isPrimary) {
                     songs.push(song.title);
                 }
                 if (musiclist.length == 0) return interaction.followUp(`${song.title} has been added to the queue!`);
-                interaction.followUp(`We are now adding ${musiclist.length - 1} songs to the queue.\nPleas wait a moment...\nIt may take a while to add songs to the queue.`);
+                interaction.followUp(`We are now adding ${musiclist.length} songs to the queue.\nPleas wait a moment...\nIt may take a while to add songs to the queue.`);
 
                 let token = Math.random().toString(36).slice(-8);
 
@@ -328,6 +330,8 @@ if (cluster.isPrimary) {
                 active[token] = 0;
                 count[token] = 0;
                 temp[token] = [];
+                allcount[token] = musiclist.length;
+                fallcount[token] = 0;
                 let next = [musiclist.shift(), Index[token], token];
 
                 let followUped = false;
@@ -355,7 +359,7 @@ if (cluster.isPrimary) {
 
                         if (musiclist.length <= 0) {
                             active[message.token]--;
-                            if (active[message.token] != 0) return;
+                            if (active[message.token] != 0 || allcount[message.token] == (count[message.token] + failcount[message.token])) return;
                             followUped = true;
                             serverQueue.songs.push(...temp[message.token].sort((a, b) => ((a.index > b.index) ? -1 : 1)).map(x => x.song));
                             serverQueue.textChannel.send(`Added ${count[message.token]} songs to the queue!`);
@@ -363,6 +367,8 @@ if (cluster.isPrimary) {
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
+                            delete allcount[message.token];
+                            delete fallcount[message.token];
                             return
                         } else {
                             if (musicInfoCache.has(musiclist[0])) {
@@ -387,12 +393,14 @@ if (cluster.isPrimary) {
                             delete Index[message.token];
                             delete count[message.token];
                             delete temp[message.token];
+                            delete allcount[message.token];
+                            delete fallcount[message.token];
                             return
                         } else {
                             if (musicInfoCache.has(musiclist[0])) {
                                 song = musicInfoCache.get(musiclist.shift())
                                 Index[token]++;
-                                count[token]++;
+                                fallcount[token]++;
                                 return message_handler(worker, { type: "end", token: token, song: song, index: Index[token] - 1 });
                             }
                             worker.send(next);
