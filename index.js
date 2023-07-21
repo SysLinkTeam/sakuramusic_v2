@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType } = require('discord.js');
 const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
@@ -197,6 +197,10 @@ if (cluster.isPrimary) {
             name: 'invite',
             description: 'Invite SakuraMusicV2 to your server',
             type: ApplicationCommandType.ChatInput,
+        },
+        {
+            name: 'autoplay',
+            description: 'Autoplay the music if the queue is empty',
         }
     ];
 
@@ -207,7 +211,6 @@ if (cluster.isPrimary) {
 
     client.once('ready', () => {
         console.log('SakuraMusic v2 is now online!');
-        client.user.setActivity('SakuraMusic v2 | /help', { type: 'LISTENING' });
         client.application.commands.set(commandList);
     });
 
@@ -231,7 +234,7 @@ if (cluster.isPrimary) {
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
                 url = interaction.options.getString('video_info');
-                if (url.includes('list=')) {
+                if (url.includes('list=') && !url.includes('watch?v=')) {
                     playlist = await ytpl(url,{limit: Infinity}).catch(error => {
                         console.log(error)
                         interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
@@ -242,11 +245,12 @@ if (cluster.isPrimary) {
                     musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
 
                 } else {
-                    if (!url.includes('youtube.com') || !url.includes('youtu.be/')) {
+                    if (!url.includes('youtube.com') && !url.includes('youtu.be/')) {
                         let yt_info = await playdl.search(url, {
                             limit: 1
                         })
-                        if (yt_info.length = 1) url = yt_info[0].url
+                        if (yt_info.length == 0) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                        url = yt_info[0].url
                     }
                     musiclist.push(url)
                 }
@@ -289,7 +293,9 @@ if (cluster.isPrimary) {
                         starttimestamp: 0,
                         player: null,
                         resource: null,
-                        paused: false
+                        paused: false,
+                        autoPlay: false,
+                        autoPlayPosition: 1
                     };
 
 
@@ -420,7 +426,9 @@ if (cluster.isPrimary) {
             case 'stop':
                 serverQueue = queue.get(interaction.guild.id);
                 if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to stop the music!');
+                if (!serverQueue) return interaction.followUp('There is no song that I could stop!');
                 serverQueue.songs = [];
+                serverQueue.autoPlay = false;
                 serverQueue.player.stop();
                 interaction.followUp('Stopped the music!');
                 break;
@@ -448,7 +456,7 @@ if (cluster.isPrimary) {
                 serverQueue = queue.get(interaction.guild.id);
                 if (!serverQueue) return interaction.followUp('There is no song that I could tell you about the song you are playing!');
                 timestamp = Date.now();
-                playsec = Math.floor(timestamp / 1000) - Math.floor(serverQueue.starttimestamp / 1000);
+                playsec = Math.floor(serverQueue.resource.playbackDuration / 1000);
 
                 function toHms(t) {
                     hms = "";
@@ -662,6 +670,18 @@ if (cluster.isPrimary) {
                     .setColor('#ff0000')
                 interaction.followUp({ embeds: [embed] });
                 break;
+
+            case 'autoplay':
+                if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to enable/disable autoplay!');
+                serverQueue = queue.get(interaction.guild.id);
+                if (!serverQueue) return interaction.followUp('Play a song first!');
+                if (serverQueue.autoPlay === false) {
+                    serverQueue.autoPlay = true;
+                    interaction.followUp('Autoplay is enabled!');
+                }else{
+                    serverQueue.autoPlay = false;
+                    interaction.followUp('Autoplay is disabled!');
+                }
         }
     });
 
@@ -677,11 +697,47 @@ if (cluster.isPrimary) {
     });
 
 
-    async function play(guild, song, interaction = null) {
+    async function play(guild, song, interaction = null, songcache = null) {
         serverQueue = queue.get(guild.id);
         if (!serverQueue) return;
 
         if (!song) {
+            if (serverQueue.autoPlay === true) {
+                serverQueue.textChannel.send('Auto play is enabled, so I will play the next song!');
+                title = songcache.title.slice(0, songcache.title.length / 2);
+                let yt_info = await playdl.search(title, {
+                    limit: 2
+                })
+                if(yt_info.length != 0){
+                    index = 0
+                    if(yt_info[0].url == songcache.url) index = 1
+                    yt_info = yt_info[index]
+                    songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
+                        if(error) console.error(error)
+                    });
+                    if (songInfo){
+                        song = {
+                            title: songInfo.videoDetails.title,
+                            url: songInfo.videoDetails.video_url,
+                            totalsec: songInfo.videoDetails.lengthSeconds,
+                            viewcount: songInfo.videoDetails.viewCount,
+                            author: {
+                                name: songInfo.videoDetails.author.name,
+                                url: songInfo.videoDetails.author.channel_url,
+                                subscriber_count: songInfo.videoDetails.author.subscriber_count,
+                                verified: songInfo.videoDetails.author.verified
+                            },
+                            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
+                        };
+                        serverQueue.songs.push(song);
+                        serverQueue.autoPlayPosition++;
+                        return play(guild, serverQueue.songs[0], interaction);
+                    } 
+                }else{
+                    serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
+                    
+                }
+            }
             if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
             queue.delete(guild.id);
             return;
@@ -708,9 +764,10 @@ if (cluster.isPrimary) {
                 if (serverQueue.queueloop === true) {
                     serverQueue.songs.push(serverQueue.songs[0]);
                 }
-                serverQueue.songs.shift();
+                songcache = serverQueue.songs.shift();
             }
-            play(guild, serverQueue.songs[0], interaction);
+            
+            play(guild, serverQueue.songs[0], interaction, songcache);
         })
             .on('error', error => {
                 console.error(error)
@@ -729,6 +786,13 @@ if (cluster.isPrimary) {
     }
 
     cron.schedule('*/10 * * * * *', async () => {
+        client.user.setPresence({
+            activities: [{
+                name: ` /help | ${queue.size} vc & ${client.guilds.cache.size} servers`,
+                type: ActivityType.Streaming,
+            }]
+        });
+
         if (cacheEnabled === false) return;
         fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => {if (err) console.error(err)});
         let totalmemory = os.totalmem()
