@@ -711,7 +711,7 @@ if (cluster.isPrimary) {
 
         if (!song) {
             if (serverQueue.autoPlay === true) {
-                serverQueue.textChannel.send('Auto play is enabled, so I will play the next song!');
+                serverQueue.textChannel.send('Auto play is enabled, so I will search next song for you!');
                 title = songcache.title.slice(0, songcache.title.length / 2);
                 let yt_info = await playdl.search(title, {
                     limit: 2
