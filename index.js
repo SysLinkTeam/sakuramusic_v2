@@ -1,5 +1,5 @@
-const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType } = require('discord.js');
-const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
+const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
+const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection, VoiceConnection, AudioPlayer, AudioResource } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
 const playdl = require("play-dl")
@@ -12,6 +12,7 @@ const fs = require('fs');
 const EventEmitter = events.EventEmitter;
 const ee = new EventEmitter();
 const numCPUs = cpus().length;
+const JSONB = require('json-bigint-native');
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
 
@@ -36,11 +37,11 @@ if (cluster.isPrimary) {
     }
     if (cacheEnabled) {
         console.log("-------Cache is enabled-------")
-        console.log("Cache will be saved every 10 seconds")
+        console.log("Cache will be saved every 5 seconds")
         console.log("Cache will be loaded on startup")
         console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time and reduce Network usage")
         if (process.env.ramUsageReportEnabled == "true") {
-            console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 10 seconds.")
+            console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 5 seconds.")
             ramUsageReportEnabled = true;
         } else {
             console.log("if you want to show RAM usage report, set ramUsageReportEnabled to true in .env")
@@ -68,8 +69,6 @@ if (cluster.isPrimary) {
         return v
     }
     let musicInfoCache = new Map();
-    if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify(musicInfoCache, replacer))
-    if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
     let temp = {};
     let Index = {};
     let active = {};
@@ -80,6 +79,8 @@ if (cluster.isPrimary) {
 
     token = process.env.token
     queue = new Map();
+
+    rebootFLG = false;
 
     commandList = [
         {
@@ -210,9 +211,50 @@ if (cluster.isPrimary) {
         console.error(err);
     });
 
-    client.once('ready', () => {
-        console.log('SakuraMusic v2 is now online!');
+    client.once('ready', async () => {
+        console.log(`${client.user.username} is now online!`);
         client.application.commands.set(commandList);
+
+        if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify(new Map(), replacer))
+        if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
+
+        if (!fs.existsSync('./queue.json')) fs.writeFileSync('./queue.json', JSON.stringify(getQueueData()))
+        async function loadQueue() {
+            let queuedata = JSON.parse(fs.readFileSync('./queue.json', 'utf8'));
+            if(queuedata.length == 0) return new Map();
+            queuedata.forEach((value) => {
+                queueContruct = {
+                    textChannel: client.channels.cache.get(value.textChannel),
+                    voiceChannel: client.channels.cache.get(value.voiceChannel),
+                    connection: null,
+                    songs: value.songs,
+                    playing: value.playing,
+                    loop: value.loop,
+                    queueloop: value.queueloop,
+                    player: null,
+                    resource: null,
+                    paused: value.paused,
+                    autoPlay: value.autoPlay,
+                    autoPlayPosition: value.autoPlayPosition,
+                    starttimestamp: value.starttimestamp
+                };
+                queue.set(value.key, queueContruct);
+            });
+            rebootFLG = true;
+        }
+        await loadQueue();
+        if (queue.length != 0) rebootFLG = true;
+        if (rebootFLG) {
+            for (const [key, value] of queue) {
+                value.textChannel.send({ embeds: [new EmbedBuilder().setTitle("Sorry for the inconvenience...").setDescription("We are sorry that you had to restart the bot while using our service.\nWe are always working to fix bugs, add new features and improve stability.\nPlease be assured that we will be restarting soon, and that your queue and other data will be preserved after the restart.").setColor("#ff0000").setFooter({ text: "SakuraMusic v2", iconURL: client.user.displayAvatarURL() })] })
+                value.connection = await joinVoiceChannel({
+                    channelId: value.voiceChannel.id,
+                    guildId: value.voiceChannel.guild.id,
+                    adapterCreator: value.voiceChannel.guild.voiceAdapterCreator
+                });
+                play(value.voiceChannel.guild, value.songs[0])
+            }
+        }
     });
 
     client.on('interactionCreate', async interaction => {
@@ -246,10 +288,15 @@ if (cluster.isPrimary) {
                     musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
 
                 } else {
+                    errorFLG = false;
                     if (!url.includes('youtube.com') && !url.includes('youtu.be/')) {
                         let yt_info = await playdl.search(url, {
                             limit: 1
-                        })
+                        }).catch(async error => {
+                            errorFLG = true;
+                            return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
+                        });
+                        if (errorFLG) return;
                         if (yt_info.length == 0) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                         url = yt_info[0].url
                     }
@@ -725,6 +772,7 @@ if (cluster.isPrimary) {
 
                 }
             }
+            serverQueue.textChannel.send('Stop playing music because there is no song in the queue!');
             if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
             queue.delete(guild.id);
             return;
@@ -799,20 +847,20 @@ if (cluster.isPrimary) {
     }
 
     function pickNextSong(array, playedsong) {
-        if(array.length == 0 || array.length == 1) return null;
+        if (array.length == 0 || array.length == 1) return null;
         array = array[Math.floor(Math.random() * array.length)]
         if (array.url == playedsong.url) return pickNextSong(array, playedsong);
         return array;
     }
 
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('*/5 * * * * *', async () => {
         client.user.setPresence({
             activities: [{
                 name: ` /help | ${queue.size} vc & ${client.guilds.cache.size} servers`,
                 type: ActivityType.Streaming,
             }]
         });
-
+        fs.writeFile('./queue.json', JSON.stringify(getQueueData()), (err) => { if (err) console.error(err) });
         if (cacheEnabled === false) return;
         fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => { if (err) console.error(err) });
         let totalmemory = os.totalmem()
@@ -865,6 +913,27 @@ if (cluster.isPrimary) {
         }
     }
 
+    function getQueueData(){
+        let data = [];
+        var i = 0;
+        queue.forEach((value, key) => {
+            data[i] = {};
+            data[i].key = key;
+            data[i].textChannel = value.textChannel.id;
+            data[i].voiceChannel = value.voiceChannel.id;
+            data[i].songs = value.songs;
+            data[i].playing = value.playing;
+            data[i].loop = value.loop;
+            data[i].queueloop = value.queueloop;
+            data[i].starttimestamp = value.starttimestamp;
+            data[i].autoPlay = value.autoPlay;
+            data[i].autoPlayPosition = value.autoPlayPosition;
+            data[i].paused = value.paused;
+            data[i].volume = value.resource.volume.volume;
+            i++;
+        });
+        return data;
+    }
 
 
     client.login(token);
