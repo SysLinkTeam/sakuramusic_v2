@@ -12,7 +12,6 @@ const fs = require('fs');
 const EventEmitter = events.EventEmitter;
 const ee = new EventEmitter();
 const numCPUs = cpus().length;
-const JSONB = require('json-bigint-native');
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
 
