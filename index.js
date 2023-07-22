@@ -228,7 +228,7 @@ if (cluster.isPrimary) {
 
                 permissions = voiceChannel.permissionsFor(interaction.client.user);
 
-                if (!permissions.has(PermissionFlagsBits.Flags.Connect) || !permissions.has(PermissionFlagsBits.Flags.Speak)) {
+                if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
                     return interaction.followUp("I need the permissions to join and speak in your voice channel!");
                 }
 
@@ -755,15 +755,12 @@ if (cluster.isPrimary) {
             }
 
             play(guild, serverQueue.songs[0], interaction, songcache);
-        })
-            .on('error', error => {
-                console.error(error)
-            });
-            console.log(song.author)
+        }).on('error', error => {
+            console.error(error)
+        });
         embed = {
             "title": "Now Playing...♬",
             "description": `[${song.title}](${song.url})`,
-            //"url": song.url,
             "color": Math.floor(Math.random() * 16777214) + 1,
             "thumbnail": {
                 "url": song.thumbnail
@@ -797,21 +794,11 @@ if (cluster.isPrimary) {
                 "inline": true
             }]
         };
-        /*
-        embed = new EmbedBuilder()
-            .setTitle('Now Playing')
-            .setDescription(`[${song.title}](${song.url})`)
-            .setFooter({
-                text: "SakuraMusic v2",
-                iconURL: client.user.displayAvatarURL(),
-            })
-            .setColor('#ff0000')
-        */
         serverQueue.textChannel.send({ embeds: [embed] });
         serverQueue.starttimestamp = Date.now();
     }
 
-    function pickNextSong(array, playedsong, i = 0){
+    function pickNextSong(array, playedsong, i = 0) {
         if (i > 10) return null;
         array = array[Math.floor(Math.random() * array.length)]
         if (array.url == playedsong.url) return pickNextSong(array, playedsong, i++);
