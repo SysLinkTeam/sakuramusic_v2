@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType } = require('discord.js');
 const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const ytpl = require('ytpl');
@@ -6,7 +6,6 @@ const playdl = require("play-dl")
 const cluster = require('cluster');
 const { cpus } = require('os');
 const os = require('os');
-const { count } = require('console');
 const cron = require('node-cron');
 const events = require('events');
 const fs = require('fs');
@@ -20,7 +19,7 @@ if (cluster.isPrimary) {
     cacheEnabled = true;
     ramUsageReportEnabled = false;
     multiCoreScale = 1;
-    
+
     if (process.env.multiCoreScale) {
         multiCoreScale = parseInt(process.env.multiCoreScale);
         if (multiCoreScale < 1) multiCoreScale = 1;
@@ -40,10 +39,10 @@ if (cluster.isPrimary) {
         console.log("Cache will be saved every 10 seconds")
         console.log("Cache will be loaded on startup")
         console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time and reduce Network usage")
-        if(process.env.ramUsageReportEnabled == "true"){
+        if (process.env.ramUsageReportEnabled == "true") {
             console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 10 seconds.")
             ramUsageReportEnabled = true;
-        }else {
+        } else {
             console.log("if you want to show RAM usage report, set ramUsageReportEnabled to true in .env")
         }
         console.log("If you want to disable cache, set cacheEnabled to false in .env")
@@ -63,13 +62,13 @@ if (cluster.isPrimary) {
             if (v.dataType === "Map") {
                 return new Map(v.value)
             }
-        } else if(v === undefined || v === null) { 
+        } else if (v === undefined || v === null) {
             return new Map()
         }
         return v
     }
     let musicInfoCache = new Map();
-    if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify(musicInfoCache,replacer))
+    if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify(musicInfoCache, replacer))
     if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
     let temp = {};
     let Index = {};
@@ -229,7 +228,7 @@ if (cluster.isPrimary) {
 
                 permissions = voiceChannel.permissionsFor(interaction.client.user);
 
-                if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
+                if (!permissions.has(PermissionFlagsBits.Flags.Connect) || !permissions.has(PermissionFlagsBits.Flags.Speak)) {
                     return interaction.followUp("I need the permissions to join and speak in your voice channel!");
                 }
 
@@ -237,7 +236,7 @@ if (cluster.isPrimary) {
                 serverQueue = queue.get(interaction.guild.id);
                 url = interaction.options.getString('video_info');
                 if (url.includes('list=') && !url.includes('watch?v=')) {
-                    playlist = await ytpl(url,{limit: Infinity}).catch(error => {
+                    playlist = await ytpl(url, { limit: Infinity }).catch(error => {
                         console.log(error)
                         interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.")
                     });
@@ -283,7 +282,7 @@ if (cluster.isPrimary) {
                     song = musicInfoCache.get(musiclist.shift())
                 }
                 if (!serverQueue) {
-                    
+
                     queueContruct = {
                         textChannel: interaction.channel,
                         voiceChannel: voiceChannel,
@@ -410,7 +409,7 @@ if (cluster.isPrimary) {
                     }
                 }
                 if (Object.keys(cluster.workers).length == 0) {
-                    for (i = 0; i < numCPUs *  multiCoreScale; i++) {
+                    for (i = 0; i < numCPUs * multiCoreScale; i++) {
                         cluster.fork();
                     }
                 } else {
@@ -465,31 +464,6 @@ if (cluster.isPrimary) {
                 if (!serverQueue) return interaction.followUp('There is no song that I could tell you about the song you are playing!');
                 timestamp = Date.now();
                 playsec = Math.floor(serverQueue.resource.playbackDuration / 1000);
-
-                function toHms(t) {
-                    hms = "";
-                    h = t / 3600 | 0;
-                    m = t % 3600 / 60 | 0;
-                    s = t % 60;
-
-                    if (h != 0) {
-                        hms = h + ":" + padZero(m) + ":" + padZero(s);
-                    } else if (m != 0) {
-                        hms = m + ":" + padZero(s);
-                    } else {
-                        hms = "0:" + padZero(s);
-                    }
-
-                    return hms;
-
-                    function padZero(v) {
-                        if (v < 10) {
-                            return "0" + v;
-                        } else {
-                            return v;
-                        }
-                    }
-                }
 
                 playtimetext = toHms(playsec);
 
@@ -686,7 +660,7 @@ if (cluster.isPrimary) {
                 if (serverQueue.autoPlay === false) {
                     serverQueue.autoPlay = true;
                     interaction.followUp('Autoplay is enabled!');
-                }else{
+                } else {
                     serverQueue.autoPlay = false;
                     interaction.followUp('Autoplay is disabled!');
                 }
@@ -698,6 +672,7 @@ if (cluster.isPrimary) {
             serverQueue = queue.get(oldState.guild.id);
             if (!serverQueue) return;
             serverQueue.songs = [];
+            serverQueue.autoPlay = false;
             serverQueue.player.stop();
             serverQueue.connection.destroy();
             serverQueue.textChannel.send('Everyone left the voice channel, so I left the voice channel as well!');
@@ -714,16 +689,20 @@ if (cluster.isPrimary) {
                 serverQueue.textChannel.send('Auto play is enabled, so I will search next song for you!');
                 title = songcache.title.slice(0, songcache.title.length / 2);
                 let yt_info = await playdl.search(title, {
-                    limit: 2
+                    limit: 10
                 })
-                if(yt_info.length != 0){
-                    index = 0
-                    if(yt_info[0].url == songcache.url) index = 1
-                    yt_info = yt_info[index]
+                if (yt_info.length != 0) {
+                    yt_info = pickNextSong(yt_info, songcache);
+                    if (yt_info == null) {
+                        serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
+                        if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
+                        queue.delete(guild.id);
+                        return;
+                    }
                     songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
-                        if(error) console.error(error)
+                        if (error) console.error(error)
                     });
-                    if (songInfo){
+                    if (songInfo) {
                         song = {
                             title: songInfo.videoDetails.title,
                             url: songInfo.videoDetails.video_url,
@@ -740,10 +719,10 @@ if (cluster.isPrimary) {
                         serverQueue.songs.push(song);
                         serverQueue.autoPlayPosition++;
                         return play(guild, serverQueue.songs[0], interaction);
-                    } 
-                }else{
+                    }
+                } else {
                     serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
-                    
+
                 }
             }
             if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
@@ -774,13 +753,51 @@ if (cluster.isPrimary) {
                 }
                 songcache = serverQueue.songs.shift();
             }
-            
+
             play(guild, serverQueue.songs[0], interaction, songcache);
         })
             .on('error', error => {
                 console.error(error)
             });
-
+            console.log(song.author)
+        embed = {
+            "title": "Now Playing...♬",
+            "description": `[${song.title}](${song.url})`,
+            //"url": song.url,
+            "color": Math.floor(Math.random() * 16777214) + 1,
+            "thumbnail": {
+                "url": song.thumbnail
+            },
+            "footer": {
+                text: "SakuraMusic V2",
+                iconURL: client.user.displayAvatarURL(),
+            },
+            "author": {
+                "name": song.author.name,
+                "url": song.author.url
+            },
+            "fields": [{
+                "name": "channel",
+                "value": song.author.name
+            }, {
+                "name": "Music length",
+                "value": toHms(song.totalsec),
+                "inline": true
+            }, {
+                "name": "viewCount",
+                "value": song.viewcount,
+                "inline": true
+            }, {
+                "name": "Channel:subscriber",
+                "value": song.author.subscriber_count,
+                "inline": true
+            }, {
+                "name": "Channel:verified",
+                "value": song.author.verified,
+                "inline": true
+            }]
+        };
+        /*
         embed = new EmbedBuilder()
             .setTitle('Now Playing')
             .setDescription(`[${song.title}](${song.url})`)
@@ -789,8 +806,15 @@ if (cluster.isPrimary) {
                 iconURL: client.user.displayAvatarURL(),
             })
             .setColor('#ff0000')
+        */
         serverQueue.textChannel.send({ embeds: [embed] });
         serverQueue.starttimestamp = Date.now();
+    }
+
+    function pickNextSong(array, playedsong, i = 0){
+        if (i > 10) return null;
+        array = array[Math.floor(Math.random() * array.length)]
+        if (array.url == playedsong.url) return pickNextSong(array, playedsong, i++);
     }
 
     cron.schedule('*/10 * * * * *', async () => {
@@ -802,11 +826,11 @@ if (cluster.isPrimary) {
         });
 
         if (cacheEnabled === false) return;
-        fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => {if (err) console.error(err)});
+        fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => { if (err) console.error(err) });
         let totalmemory = os.totalmem()
         let usedmemory = os.totalmem() - os.freemem()
         let ramUsage = process.memoryUsage().heapUsed / 1024 / 1024;
-        if(ramUsageReportEnabled){
+        if (ramUsageReportEnabled) {
             console.log("--------------------ram usage report--------------------")
             console.log("time: " + new Date().toLocaleString())
             console.log(`Total memory(machine): ${Math.floor(totalmemory / 1024 / 1024 / 1024)} GB`)
@@ -827,6 +851,32 @@ if (cluster.isPrimary) {
             cacheEnabled = false;
         }
     });
+
+    function toHms(t) {
+        hms = "";
+        h = t / 3600 | 0;
+        m = t % 3600 / 60 | 0;
+        s = t % 60;
+
+        if (h != 0) {
+            hms = h + ":" + padZero(m) + ":" + padZero(s);
+        } else if (m != 0) {
+            hms = m + ":" + padZero(s);
+        } else {
+            hms = "0:" + padZero(s);
+        }
+
+        return hms;
+
+        function padZero(v) {
+            if (v < 10) {
+                return "0" + v;
+            } else {
+                return v;
+            }
+        }
+    }
+
 
 
     client.login(token);
