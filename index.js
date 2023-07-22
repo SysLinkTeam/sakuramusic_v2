@@ -798,10 +798,11 @@ if (cluster.isPrimary) {
         serverQueue.starttimestamp = Date.now();
     }
 
-    function pickNextSong(array, playedsong, i = 0) {
-        if (i > 10) return null;
+    function pickNextSong(array, playedsong) {
+        if(array.length == 0 || array.length == 1) return null;
         array = array[Math.floor(Math.random() * array.length)]
-        if (array.url == playedsong.url) return pickNextSong(array, playedsong, i++);
+        if (array.url == playedsong.url) return pickNextSong(array, playedsong);
+        return array;
     }
 
     cron.schedule('*/10 * * * * *', async () => {
