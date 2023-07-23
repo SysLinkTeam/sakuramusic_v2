@@ -237,6 +237,8 @@ if (cluster.isPrimary) {
                     autoPlayPosition: value.autoPlayPosition,
                     starttimestamp: value.starttimestamp
                 };
+                if(queueContruct.songs.length == 0) return;
+                if(queueContruct.textChannel == null || queueContruct.voiceChannel == null) return;
                 queue.set(value.key, queueContruct);
             });
             rebootFLG = true;
@@ -245,6 +247,7 @@ if (cluster.isPrimary) {
         if (queue.length != 0) rebootFLG = true;
         if (rebootFLG) {
             for (const [key, value] of queue) {
+                if(value.songs.length == 0) continue;
                 value.textChannel.send({ embeds: [new EmbedBuilder().setTitle("Sorry for the inconvenience...").setDescription("We are sorry that you had to restart the bot while using our service.\nWe are always working to fix bugs, add new features and improve stability.\nPlease be assured that we will be restarting soon, and that your queue and other data will be preserved after the restart.").setColor("#ff0000").setFooter({ text: "SakuraMusic v2", iconURL: client.user.displayAvatarURL() })] })
                 value.connection = await joinVoiceChannel({
                     channelId: value.voiceChannel.id,
@@ -658,7 +661,7 @@ if (cluster.isPrimary) {
             case 'help':
                 embed = new EmbedBuilder()
                     .setTitle('Help')
-                    .setDescription('**play** - Plays a song\n**skip** - Skips a song\n**stop** - Stops the music\n**queue** - Shows the queue\n**nowplaying** - Shows the song that is playing\n**loop** - Loops the queue\n**queueloop** - Loops the queue\n**volume** - Changes the volume\n**pause** - Pauses the song\n**resume** - Resumes the song\n**remove** - Removes a song from the queue\n**shuffle** - Shuffles the queue\n**skipto** - Skips to a song in the queue\n**help** - Shows this message')
+                    .setDescription('**play** - Plays a song\n**skip** - Skips a song\n**stop** - Stops the music\n**queue** - Shows the queue\n**nowplaying** - Shows the song that is playing\n**loop** - Loops the queue\n**queueloop** - Loops the queue\n**volume** - Changes the volume\n**pause** - Pauses the song\n**resume** - Resumes the song\n**remove** - Removes a song from the queue\n**shuffle** - Shuffles the queue\n**skipto** - Skips to a song in the queue\n**help** - Shows this message\n**ping** - Shows the ping\n**invite** - Invite SakuraMusic v2 to your server\n**autoplay** - Autoplay the music if the queue is empty')
                     .setFooter({
                         text: "SakuraMusic v2",
                         iconURL: client.user.displayAvatarURL(),
@@ -746,7 +749,13 @@ if (cluster.isPrimary) {
                         return;
                     }
                     songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
-                        if (error) console.error(error)
+                        if (error) {
+                            console.log(error);
+                            serverQueue.textChannel.send('I find the next song, but I cannot play it, so I will stop playing music.\nPlease try again later.');
+                            if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
+                            queue.delete(guild.id);
+                            return;
+                        }
                     });
                     if (songInfo) {
                         song = {
