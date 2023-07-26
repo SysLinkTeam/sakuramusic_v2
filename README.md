@@ -1,7 +1,8 @@
 # sakuramusic v2
 
 ### Official Instance Invite Link
-[Invite your server from here](https://discord.com/api/oauth2/authorize?client_id=887156889455038494&permissions=0&scope=bot%20applications.commands)
+[Invite your server from here(beta instance)](https://discord.com/api/oauth2/authorize?client_id=887156889455038494&permissions=0&scope=bot%20applications.commands)
+[Invite your server from here(stable instance)](https://discord.com/api/oauth2/authorize?client_id=1133641045813502047&permissions=0&scope=bot%20applications.commands)
 
 ## ja
 2021/09にqiitaで公開した[記事](https://qiita.com/_yussy_/items/d2d809a2da82c5389966)に記載されていたSakuraMusicというbotをDiscord.js v14で書き直したうえで複数の機能を追加したものです。
