@@ -1,7 +1,7 @@
 # sakuramusic v2
 
 ### Official Instance Invite Link
-[Invite your server from here(beta instance)](https://discord.com/api/oauth2/authorize?client_id=887156889455038494&permissions=0&scope=bot%20applications.commands)
+[Invite your server from here(beta instance)](https://discord.com/api/oauth2/authorize?client_id=887156889455038494&permissions=0&scope=bot%20applications.commands)  
 [Invite your server from here(stable instance)](https://discord.com/api/oauth2/authorize?client_id=1133641045813502047&permissions=0&scope=bot%20applications.commands)
 
 ## ja
