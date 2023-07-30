@@ -12,6 +12,7 @@ try {
     var events = require('events');
     var fs = require('fs');
     var { https } = require('follow-redirects');
+    var { Readable } = require('stream');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
@@ -910,6 +911,8 @@ if (cluster.isPrimary) {
             '-f',
             'best[ext=mp4]',
         ]);
+
+        
         
         player = createAudioPlayer({
             behaviors: {
@@ -918,7 +921,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(new Readable().wrap(stream), { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
