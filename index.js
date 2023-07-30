@@ -912,12 +912,13 @@ if (cluster.isPrimary) {
             '-f',
             'best[ext=mp4]',
         ]);
+        */
         player = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Stop,
             },
         });
-        */
+        
 
         resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
