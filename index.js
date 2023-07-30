@@ -911,8 +911,13 @@ if (cluster.isPrimary) {
             '-f',
             'best[ext=mp4]',
         ]);
-
         
+        stream.on('error', (err) => {
+            console.log(err);
+            serverQueue.textChannel.send('I cannot play this song, so I will skip it!');
+            serverQueue.songs.shift();
+            play(guild, serverQueue.songs[0], interaction);
+        });
         
         player = createAudioPlayer({
             behaviors: {
@@ -921,7 +926,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(new Readable().wrap(stream), { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
