@@ -909,7 +909,7 @@ if (cluster.isPrimary) {
         let stream = ytdlp.execStream([
             song.url,
             '-f',
-            'bestaudio',
+            'best[ext=webm+acodec=opus+asr=48000]/best[ext=mp4]/best',
         ]);
         player = createAudioPlayer({
             behaviors: {
