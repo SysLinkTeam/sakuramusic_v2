@@ -905,7 +905,8 @@ if (cluster.isPrimary) {
             return;
         }
 
-        //let stream = await playdl.stream(song.url)
+        let stream = await playdl.stream(song.url)
+        /*
         let stream = ytdlp.execStream([
             song.url,
             '-f',
@@ -916,6 +917,7 @@ if (cluster.isPrimary) {
                 noSubscriber: NoSubscriberBehavior.Stop,
             },
         });
+        */
 
         resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
