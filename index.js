@@ -905,7 +905,7 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream = await playdl.stream(song.url)
+        let stream = (await playdl.stream(song.url)).stream
         /*
         let stream = ytdlp.execStream([
             song.url,
