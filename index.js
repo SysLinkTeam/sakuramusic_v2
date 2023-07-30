@@ -917,7 +917,7 @@ if (cluster.isPrimary) {
             },
         });
 
-        resource = createAudioResource(stream.stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
