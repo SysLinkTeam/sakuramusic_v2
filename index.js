@@ -323,8 +323,6 @@ if (cluster.isPrimary) {
         }
     })())();
 
-    const ytdlp = new streamer('./' + yt_dlp_filename);
-
     process.on('uncaughtException', async function (err) {
         console.error(err);
     });
@@ -905,14 +903,13 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream = await playdl.stream(song.url)
-        /*
-        let stream = ytdlp.execStream([
+        //let stream = await playdl.stream(song.url)
+        let stream = new streamer('./' + yt_dlp_filename).execStream([
             song.url,
             '-f',
             'best[ext=mp4]',
         ]);
-        */
+        
         player = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Stop,
