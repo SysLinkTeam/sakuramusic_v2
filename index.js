@@ -1,14 +1,37 @@
-const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
-const { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection, VoiceConnection, AudioPlayer, AudioResource } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
-const ytpl = require('ytpl');
-const playdl = require("play-dl")
-const cluster = require('cluster');
-const { cpus } = require('os');
-const os = require('os');
-const cron = require('node-cron');
-const events = require('events');
-const fs = require('fs');
+try {
+    var { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
+    var { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection, VoiceConnection, AudioPlayer, AudioResource } = require('@discordjs/voice');
+    var ytdl = require('ytdl-core');
+    var ytpl = require('ytpl');
+    var playdl = require("play-dl")
+    var streamer = require('yt-dlp-wrap').default;
+    var cluster = require('cluster');
+    var { cpus } = require('os');
+    var os = require('os');
+    var cron = require('node-cron');
+    var events = require('events');
+    var fs = require('fs');
+    var { https } = require('follow-redirects');
+} catch (e) {
+    if (e.code !== 'MODULE_NOT_FOUND') {
+        throw e;
+    }
+    console.log("Installing dependencies...")
+    const { execSync } = require('child_process');
+    execSync('npm install', (err, stdout, stderr) => {
+        if (err) {
+            console.log("Failed to install dependencies.")
+            console.log(err);
+            return;
+        }
+        console.log(stdout);
+        console.log("Dependencies installed. restarting...")
+        require('child_process').execSync('node index.js', { stdio: [0, 1, 2] });
+        process.exit();
+    });
+
+}
+
 const EventEmitter = events.EventEmitter;
 const ee = new EventEmitter();
 const numCPUs = cpus().length;
@@ -205,6 +228,102 @@ if (cluster.isPrimary) {
         }
     ];
 
+    let yt_dlp_filename = "";
+
+    switch (process.platform) {
+        case "win32":
+            if (process.arch == "x64") {
+                yt_dlp_filename = "yt-dlp.exe";
+                break;
+            }
+            yt_dlp_filename = "yt-dlp_x86.exe";
+            break;
+        case "linux":
+            yt_dlp_filename = "yt-dlp";
+            break;
+        case "darwin":
+            yt_dlp_filename = "yt-dlp_macos";
+            break;
+        default:
+            console.log("Unsupported platform. Please use Windows, Linux or macOS.")
+            process.exit(1);
+    }
+
+    let userAgent = process.env.userAgent ? process.env.userAgent : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:68.0) Gecko/20100101 Firefox/68.0";
+    (async () => await (() => {
+        if (!fs.existsSync('./' + yt_dlp_filename)) {
+            return new Promise((resolve) => {
+                console.log("getting latest yt-dlp...")
+                https.get('https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest', { headers: { "User-Agent": userAgent } }, (res) => {
+                    let body = '';
+                    res.on('data', (chunk) => {
+                        body += chunk;
+                    });
+                    res.on('end', () => {
+                        let json = JSON.parse(body);
+                        console.log("downloading yt-dlp...")
+                        var options = {
+                            headers: {
+                                'User-Agent': userAgent,
+                                'Accept': 'application/octet-stream'
+                            }
+                        };
+                        https.get(json.assets.filter((asset) => asset.name == yt_dlp_filename)[0].url,options, (res) => {
+                            res.pipe(fs.createWriteStream('./' + yt_dlp_filename)).on('finish', () => {
+                                console.log("yt-dlp downloaded!")
+                                fs.chmodSync('./' + yt_dlp_filename, 0o755);
+                                fs.writeFileSync('./yt-dlp_version', 'utf8');
+                                console.log("yt-dlp version: " + json.tag_name);
+                                resolve();
+                            });
+                        }).on('error', (e) => {
+                            console.error(e);
+                        });
+                    });
+                }).on('error', (e) => {
+                    console.error(e);
+                });
+            })
+        } else {
+            let yt_dlp_version = fs.readFileSync('./yt-dlp_version', 'utf8');
+            console.log("yt-dlp version: " + yt_dlp_version);
+            console.log("yt-dlp is already downloaded!")
+            console.log("checking for updates...")
+            https.get('https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest', { headers: { "User-Agent": userAgent } }, (res) => {
+                let body = '';
+                res.on('data', (chunk) => {
+                    body += chunk;
+                });
+                res.on('end', () => {
+                    let json = JSON.parse(body);
+                    if (json.tag_name != yt_dlp_version) {
+                        console.log("updating yt-dlp...")
+                        var options = {
+                            headers: {
+                                'User-Agent': userAgent,
+                                'Accept': 'application/octet-stream'
+                            }
+                        };
+                        https.get(json.assets.filter((asset) => asset.name == yt_dlp_filename)[0].url,options, (res) => {
+                            res.pipe(fs.createWriteStream('./' + yt_dlp_filename)).on('finish', () => {
+                                console.log("yt-dlp updated!")
+                                fs.chmodSync('./' + yt_dlp_filename, 0o755);
+                                fs.writeFileSync('./yt-dlp_version', json.tag_name);
+                            });
+                        }).on('error', (e) => {
+                            console.error(e);
+                        });
+                    } else {
+                        console.log("yt-dlp is up to date!")
+                    }
+                });
+            }).on('error', (e) => {
+                console.error(e);
+            });
+        }
+    })())();
+
+    const ytdlp = new streamer('./' + yt_dlp_filename);
 
     process.on('uncaughtException', async function (err) {
         console.error(err);
@@ -220,7 +339,7 @@ if (cluster.isPrimary) {
         if (!fs.existsSync('./queue.json')) fs.writeFileSync('./queue.json', JSON.stringify(getQueueData()))
         async function loadQueue() {
             let queuedata = JSON.parse(fs.readFileSync('./queue.json', 'utf8'));
-            if(queuedata.length == 0) return new Map();
+            if (queuedata.length == 0) return new Map();
             queuedata.forEach((value) => {
                 queueContruct = {
                     textChannel: client.channels.cache.get(value.textChannel),
@@ -237,8 +356,8 @@ if (cluster.isPrimary) {
                     autoPlayPosition: value.autoPlayPosition,
                     starttimestamp: value.starttimestamp
                 };
-                if(queueContruct.songs.length == 0) return;
-                if(queueContruct.textChannel == null || queueContruct.voiceChannel == null) return;
+                if (queueContruct.songs.length == 0) return;
+                if (queueContruct.textChannel == null || queueContruct.voiceChannel == null) return;
                 queue.set(value.key, queueContruct);
             });
             rebootFLG = true;
@@ -247,7 +366,7 @@ if (cluster.isPrimary) {
         if (queue.length != 0) rebootFLG = true;
         if (rebootFLG) {
             for (const [key, value] of queue) {
-                if(value.songs.length == 0) continue;
+                if (value.songs.length == 0) continue;
                 value.textChannel.send({ embeds: [new EmbedBuilder().setTitle("Sorry for the inconvenience...").setDescription("We are sorry that you had to restart the bot while using our service.\nWe are always working to fix bugs, add new features and improve stability.\nPlease be assured that we will be restarting soon, and that your queue and other data will be preserved after the restart.").setColor("#ff0000").setFooter({ text: "SakuraMusic v2", iconURL: client.user.displayAvatarURL() })] })
                 value.connection = await joinVoiceChannel({
                     channelId: value.voiceChannel.id,
@@ -786,8 +905,12 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream = await playdl.stream(song.url)
-
+        //let stream = await playdl.stream(song.url)
+        let stream = ytdlp.execStream([
+            song.url,
+            '-f',
+            'bestaudio',
+        ]);
         player = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Stop,
@@ -921,7 +1044,7 @@ if (cluster.isPrimary) {
         }
     }
 
-    function getQueueData(){
+    function getQueueData() {
         let data = [];
         var i = 0;
         queue.forEach((value, key) => {
