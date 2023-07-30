@@ -905,7 +905,7 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream = (await playdl.stream(song.url)).stream
+        let stream = await playdl.stream(song.url)
         /*
         let stream = ytdlp.execStream([
             song.url,
@@ -920,7 +920,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream.stream, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
