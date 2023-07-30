@@ -12,7 +12,7 @@ try {
     var events = require('events');
     var fs = require('fs');
     var { https } = require('follow-redirects');
-    var { Readable } = require('stream');
+    var  stream  = require('stream');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
@@ -906,12 +906,14 @@ if (cluster.isPrimary) {
 
         //let stream = await playdl.stream(song.url)
         
-        let stream = new streamer('./' + yt_dlp_filename).execStream([
+        let stream_ytdlp = new streamer('./' + yt_dlp_filename).execStream([
             song.url,
             '-f',
             'best[ext=mp4]',
         ]);
-        
+
+        stream_passthrough = stream_ytdlp.pipe(new stream.PassThrough())
+
         stream.on('error', (err) => {
             console.log(err);
             serverQueue.textChannel.send('I cannot play this song, so I will skip it!');
@@ -926,7 +928,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream_passthrough, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
