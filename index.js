@@ -813,9 +813,7 @@ if (cluster.isPrimary) {
             }
 
             play(guild, serverQueue.songs[0], interaction, songcache);
-        }).on('error', error => {
-            console.error(error)
-        });
+        })
         embed = {
             "title": "Now Playing...♬",
             "description": `[${song.title}](${song.url})`,
