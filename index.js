@@ -98,7 +98,7 @@ if (cluster.isPrimary) {
     let count = {};
     let allcount = {};
     let fallcount = {};
-    client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+    client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers] });
 
     token = process.env.token
     queue = new Map();
@@ -393,8 +393,7 @@ if (cluster.isPrimary) {
                 if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
                     return interaction.followUp("I need the permissions to join and speak in your voice channel!");
                 }
-                interaction.guild.me.voice.setRequestToSpeak(true);
-                interaction.guild.me.voice.setSuppressed(false)
+                
 
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
