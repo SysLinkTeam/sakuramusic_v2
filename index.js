@@ -911,7 +911,7 @@ if (cluster.isPrimary) {
         let stream_ytdlp = new streamer('./' + yt_dlp_filename).execStream([
             song.url,
             '-f',
-            'best[ext=mp4]',
+            'best[ext=webm+acodec=opus+asr=48000]/best[ext=mp4]/best',
         ]);
         
 
