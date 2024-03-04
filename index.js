@@ -275,6 +275,8 @@ if (cluster.isPrimary) {
                 if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
                     return interaction.followUp("I need the permissions to join and speak in your voice channel!");
                 }
+                interaction.guild.me.voice.setRequestToSpeak(true);
+                interaction.guild.me.voice.setSuppressed(false)
 
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
