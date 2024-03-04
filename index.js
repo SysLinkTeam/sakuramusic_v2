@@ -13,7 +13,7 @@ try {
     var fs = require('fs');
     var { https } = require('follow-redirects');
     var  stream  = require('stream');
-    var ytdl_core = require('ytdl-core');
+    var ytdl = require('ytdl-core');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
