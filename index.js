@@ -13,6 +13,7 @@ try {
     var fs = require('fs');
     var { https } = require('follow-redirects');
     var  stream  = require('stream');
+    var ytdl_core = require('ytdl-core');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
@@ -32,7 +33,6 @@ try {
     });
 
 }
-
 const EventEmitter = events.EventEmitter;
 const ee = new EventEmitter();
 const numCPUs = cpus().length;
@@ -905,7 +905,13 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream_playdl = await playdl.stream(song.url)
+        //let stream_playdl = await playdl.stream(song.url)
+        //ytdl-core
+        let stream_ytdl = ytdl(song.url, {
+            filter: 'audioonly',
+            quality: 'highestaudio',
+            highWaterMark: 1 << 25
+        });
         
         /*
         let stream_ytdlp = new streamer('./' + yt_dlp_filename).execStream([
@@ -926,7 +932,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(stream_playdl.stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream_ytdl, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
