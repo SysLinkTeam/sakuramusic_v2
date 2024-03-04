@@ -905,15 +905,15 @@ if (cluster.isPrimary) {
             return;
         }
 
-        let stream_playdl = await playdl.stream(song.url)
+        //let stream_playdl = await playdl.stream(song.url)
         
-        /*
+        
         let stream_ytdlp = new streamer('./' + yt_dlp_filename).execStream([
             song.url,
             '-f',
             'best[ext=mp4]',
         ]);
-        */
+        
 
         
 
@@ -925,7 +925,7 @@ if (cluster.isPrimary) {
         });
         
 
-        resource = createAudioResource(stream_playdl.stream, { inlineVolume: true, inputType: stream.type });
+        resource = createAudioResource(stream_ytdlp, { inlineVolume: true, inputType: stream.type });
         resource.volume.setVolume(0.2);
         await player.play(resource);
         serverQueue.player = player;
