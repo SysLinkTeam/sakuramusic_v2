@@ -393,6 +393,8 @@ if (cluster.isPrimary) {
                 if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
                     return interaction.followUp("I need the permissions to join and speak in your voice channel!");
                 }
+                interaction.guild.me.voice.setRequestToSpeak(true);
+                interaction.guild.me.voice.setSuppressed(false)
 
                 var musiclist = [];
                 serverQueue = queue.get(interaction.guild.id);
@@ -915,12 +917,7 @@ if (cluster.isPrimary) {
         */
 
         
-        stream.on('error', (err) => {
-            console.log(err);
-            serverQueue.textChannel.send('I cannot play this song, so I will skip it!');
-            serverQueue.songs.shift();
-            play(guild, serverQueue.songs[0], interaction);
-        });
+
         
         player = createAudioPlayer({
             behaviors: {
