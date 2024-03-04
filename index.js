@@ -98,7 +98,7 @@ if (cluster.isPrimary) {
     let count = {};
     let allcount = {};
     let fallcount = {};
-    client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers] });
+    client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
     token = process.env.token
     queue = new Map();
