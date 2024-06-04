@@ -1,17 +1,21 @@
 {
+  "name": "sakuramusic_v2",
+  "version": "1.0.0",
+  "description": "[Invite your server from here(beta instance)](https://discord.com/api/oauth2/authorize?client_id=887156889455038494&permissions=0&scope=bot%20applications.commands)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@discordjs/opus": "^0.9.0",
-    "@discordjs/voice": "^0.16.0",
-    "discord.js": "^14.11.0",
-    "dotenv": "^16.3.1",
-    "ffmpeg-static": "^5.1.0",
-    "follow-redirects": "^1.15.2",
-    "libsodium-wrappers": "^0.7.11",
-    "node-cron": "^3.0.2",
-    "play-dl": "^1.9.6",
-    "sodium": "^3.0.2",
-    "yt-dlp-wrap": "^2.3.11",
-    "ytdl-core": "^4.11.4",
-    "ytpl": "^2.3.0"
+    "@discord-player/extractor": "^4.4.7",
+    "@discordjs/builders": "^1.8.2",
+    "@discordjs/rest": "^2.3.0",
+    "discord-player": "^6.6.2",
+    "discord.js": "^14.15.3",
+    "ffmpeg-static": "^5.2.0",
+    "opusscript": "^0.0.8",
+    "play-dl": "^1.9.7"
   }
 }
