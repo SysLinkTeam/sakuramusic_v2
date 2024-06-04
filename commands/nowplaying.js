@@ -39,7 +39,6 @@ module.exports = {
         { name: 'Duration', value: formatDuration(track.durationMS), inline: true },
         { name: 'Played', value: formatDuration(queue.node.estimatedPlaybackTime), inline: true },
         { name: 'Views', value: track.views.toLocaleString(), inline: true },
-        //{ name: 'Subscribers', value: track.authorSubCount.toLocaleString(), inline: true },
         { name: 'Volume', value: `${volume * 10}%`, inline: true },
         { name: 'Filters', value: filters, inline: true },
         { name: 'Progress', value: progress, inline: false }
@@ -117,43 +116,8 @@ module.exports = {
       embeds: [embed],
       components: [row1, row2, row3]
     });
-
-    setInterval(async () => {
-      const track = queue.currentTrack;
-    const filters = queue.filters.ffmpeg.filters.join(', ') || 'None';
-    const progress = queue.node.createProgressBar();
-    const volume = queue.node.volume;
-      const updatedEmbed = new EmbedBuilder()
-        .setColor(Colors.Blue)
-        .setTitle(track.title)
-        .setURL(track.url)
-        .setAuthor({ name: track.author })
-        .setThumbnail(track.thumbnail)
-        .addFields(
-          { name: 'Duration', value: formatDuration(track.durationMS), inline: true },
-          { name: 'Played', value: formatDuration(queue.node.estimatedPlaybackTime), inline: true },
-          { name: 'Views', value: track.views.toLocaleString(), inline: true },
-          //{ name: 'Subscribers', value: track.authorSubCount.toLocaleString(), inline: true },
-          { name: 'Volume', value: `${volume * 10}%`, inline: true },
-          { name: 'Filters', value: filters, inline: true },
-          { name: 'Progress', value: progress, inline: false }
-        );
-
-      await interaction.editReply({
-        embeds: [updatedEmbed],
-        components: [row1, row2, row3]
-      });
-    }, 10000);
   }
 };
-
-function createProgressBar(currentTime, duration) {
-  const totalBars = 20;
-  const progress = Math.round((currentTime / duration) * totalBars);
-  const emptyBars = totalBars - progress;
-
-  return '▇'.repeat(progress) + '—'.repeat(emptyBars);
-}
 
 function formatDuration(ms) {
   const totalSeconds = Math.floor(ms / 1000);

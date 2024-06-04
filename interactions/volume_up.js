@@ -32,11 +32,7 @@ module.exports = {
             .setDescription(`${locale.volume_max} :x:`)
         ],
         ephemeral: true
-      }).then(msg => {
-        setTimeout(() => {
-          msg.delete();
-        }, 2500);
-      });
+      })
     }
 
     await interaction.reply({
@@ -45,10 +41,6 @@ module.exports = {
           .setColor(Colors.Green)
           .setDescription(`${locale.volume_up} :white_check_mark:`)
       ]
-    }).then(msg => {
-      setTimeout(() => {
-        msg.delete();
-      }, 2500);
-    });
+    })
   }
 };

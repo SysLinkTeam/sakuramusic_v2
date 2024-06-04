@@ -25,10 +25,6 @@ module.exports = {
           .setColor(Colors.Green)
           .setDescription(`${locale.volume_reset} :white_check_mark:`)
       ]
-    }).then(msg => {
-      setTimeout(() => {
-        msg.delete();
-      }, 2500);
-    });
+    })
   }
 };

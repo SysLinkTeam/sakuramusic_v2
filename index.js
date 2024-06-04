@@ -80,14 +80,12 @@ client.once('ready', async () => {
       text = '';
     }
   }, 10000);
-
-
-
-
 });
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
+  await interaction.deferReply({ fetchReply: true })
+  interaction.reply = interaction.editReply;
 
   const command = client.commands.get(interaction.commandName);
   if (command) {
@@ -103,6 +101,9 @@ client.on('interactionCreate', async interaction => {
     const buttonCommand = require(`./interactions/${interaction.customId}.js`);
     if (buttonCommand) {
       try {
+        setTimeout(() => {
+          interaction.deleteReply();
+        }, 3000);
         await buttonCommand.execute(interaction);
       } catch (error) {
         console.error(error);
@@ -115,6 +116,9 @@ client.on('interactionCreate', async interaction => {
     const selectMenuCommand = require(`./interactions/${interaction.customId}.js`);
     if (selectMenuCommand) {
       try {
+        setTimeout(() => {
+          interaction.deleteReply();
+        }, 3000);
         await selectMenuCommand.execute(interaction);
       } catch (error) {
         console.error(error);
