@@ -2,8 +2,7 @@ const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord
 const { Player } = require('discord-player');
 const fs = require('fs');
 const path = require('path');
-const { token } = require('./config.json');
-const URL = 'https://discord.com/api/webhooks/1247351274966618185/iXlixodGppgXlA95EqyUdwRtiKUnMvkP8r82oCGkWQ6bThHp2rV6zzNEmst8LZ6jVesk';
+const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const webhookClient = new WebhookClient({ url: URL });
 
