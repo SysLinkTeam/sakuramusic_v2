@@ -67,12 +67,12 @@ client.once('ready', async () => {
 
   setInterval(() => {
     if (text !== '') {
-      const chunks = text.match(/[\s\S]{1,2000}/g);
+      const chunks = text.match(/[\s\S]{1,1900}/g);
       let i = 0;
       for (const chunk of chunks) {
         i++
         webhookClient.sendSlackMessage({
-          text: chunk,
+          text: `\`\`\`${chunk}\`\`\``,
           username: `[console]${client.user.tag}(${i}/${chunks.length})`,
           icon_url: client.user.displayAvatarURL()
         })
