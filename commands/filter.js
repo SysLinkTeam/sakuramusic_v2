@@ -31,6 +31,9 @@ module.exports = {
         ephemeral: true
       });
     }
+    if(filterName === '8D'){
+      queue.filters.filters.setFilters(['8D']);
+    }
 
     if (queue.filters.ffmpeg.filters.includes(filterName)) {
       queue.filters.ffmpeg.toggle(queue.filters.ffmpeg.filters.filter(f => f !== filterName));
