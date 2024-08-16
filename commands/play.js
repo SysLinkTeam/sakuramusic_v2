@@ -3,7 +3,8 @@ const { QueryType, onBeforeCreateStream } = require('discord-player');
 const { EmbedBuilder, Colors } = require('discord.js');
 const locales = require('../locales.js');
 const fs = require('fs');
-
+const { pipeline , Readable} = require('stream');
+const { promisify } = require('util');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
@@ -53,8 +54,15 @@ module.exports = {
   
           const response = await fetch(apiUrl);
   
-          // Return the audio stream
-          return response.body;
+          if (!response.ok) {
+              throw new Error(`unexpected response ${response.statusText}`);
+          }
+          //url return opus audio file , sowe make it to stream
+          const opusudio = await response.buffer();
+          const stream = new Readable();
+          stream.push(opusudio);
+          stream.push(null);
+          return stream;
       } catch (error) {
           console.error('Error fetching audio stream:', error);
           throw error;
