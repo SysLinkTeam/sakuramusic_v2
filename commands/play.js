@@ -58,7 +58,7 @@ module.exports = {
               throw new Error(`unexpected response ${response.statusText}`);
           }
           //url return opus audio file , sowe make it to stream
-          const opusudio = await response.buffer();
+          const opusudio = response.body;
           const stream = new Readable();
           stream.push(opusudio);
           stream.push(null);
