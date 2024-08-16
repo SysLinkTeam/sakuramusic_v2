@@ -1,7 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { QueryType } = require('discord-player');
+const { QueryType, onBeforeCreateStream } = require('discord-player');
 const { EmbedBuilder, Colors } = require('discord.js');
 const locales = require('../locales.js');
+const fs = require('fs');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -43,6 +44,21 @@ module.exports = {
     const queue = interaction.client.player.nodes.create(interaction.guild, {
       metadata: {
         channel: interaction.channel
+      },
+      async onBeforeCreateStream(track, source, _queue){
+        try {
+          const youtubeUrl = track.url;  // Assuming `track.url` contains the YouTube URL
+          const encodedUrl = encodeURIComponent(youtubeUrl);
+          const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
+  
+          const response = await fetch(apiUrl);
+  
+          // Return the audio stream
+          return response.body;
+      } catch (error) {
+          console.error('Error fetching audio stream:', error);
+          throw error;
+      }
       }
     });
 
