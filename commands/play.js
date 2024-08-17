@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { QueryType, onBeforeCreateStream } = require('discord-player');
-const { EmbedBuilder, Colors } = require('discord.js');
+const { EmbedBuilder, Colors, IntegrationApplication } = require('discord.js');
 const locales = require('../locales.js');
 const https = require('https');
 const http = require('http');
@@ -120,7 +120,10 @@ module.exports = {
     const track = result.tracks[0];
     queue.addTrack(track);
 
-    if (!queue.node.isPlaying()) await queue.node.play();
+    if (!queue.node.isPlaying()) {
+      await queue.node.play();
+      const nowplayingIntaraclion = await interaction.client.commands.get('nowplaying').execute(interaction);
+    }
 
     await interaction.reply({
       embeds: [
@@ -129,5 +132,6 @@ module.exports = {
           .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
       ]
     });
+    
   }
 };
