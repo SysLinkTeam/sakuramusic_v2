@@ -119,10 +119,10 @@ module.exports = {
 
     const track = result.tracks[0];
     queue.addTrack(track);
-
+    let flag = 0;
     if (!queue.node.isPlaying()) {
       await queue.node.play();
-      const nowplayingIntaraclion = await interaction.client.commands.get('nowplaying').execute(interaction);
+      flag = 1;
     }
 
     await interaction.reply({
@@ -131,7 +131,15 @@ module.exports = {
           .setColor(Colors.Green)
           .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
       ]
+    }).then(msg => {
+      setTimeout(() => {
+        if(flag){
+          interaction.reply = intaraction.followUp;
+          const nowplayingIntaraclion = await interaction.client.commands.get('nowplaying').execute(interaction);
+        }
+      }, 1000);
     });
+    
     
   }
 };
