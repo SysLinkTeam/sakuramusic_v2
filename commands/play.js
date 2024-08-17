@@ -2,9 +2,9 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { QueryType, onBeforeCreateStream } = require('discord-player');
 const { EmbedBuilder, Colors } = require('discord.js');
 const locales = require('../locales.js');
-const fs = require('fs');
-const { pipeline , Readable} = require('stream');
-const { promisify } = require('util');
+const https = require('https');
+const http = require('http');
+const { Readable } = require('stream');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
@@ -51,18 +51,34 @@ module.exports = {
           const youtubeUrl = track.url;  // Assuming `track.url` contains the YouTube URL
           const encodedUrl = encodeURIComponent(youtubeUrl);
           const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
-  
-          const response = await fetch(apiUrl);
-  
-          if (!response.ok) {
-              throw new Error(`unexpected response ${response.statusText}`);
+          function streamMusic(url) {
+              return new Promise((resolve, reject) => {
+                  const protocol = url.startsWith('https') ? https : http;
+          
+                  protocol.get(url, (response) => {
+                      if (response.statusCode !== 200) {
+                          return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
+                      }
+          
+                      const stream = new Readable({
+                          read() {}
+                      });
+          
+                      response.on('data', (chunk) => {
+                          stream.push(chunk);
+                      });
+          
+                      response.on('end', () => {
+                          stream.push(null); // 終了を示す
+                      });
+          
+                      resolve(stream);
+                  }).on('error', (err) => {
+                      reject(err);
+                  });
+              });
           }
-          //url return opus audio file , sowe make it to stream
-          const opusudio = response.body;
-          const stream = new Readable();
-          stream.push(opusudio);
-          stream.push(null);
-          return stream;
+          return await streamMusic(apiUrl);
       } catch (error) {
           console.error('Error fetching audio stream:', error);
           throw error;
