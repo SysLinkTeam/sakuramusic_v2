@@ -19,10 +19,9 @@ module.exports = {
     }
 
     const newVolume = queue.node.volume - 10;
-    if(queue.node.volume <= 0) queue.node.setVolume(0);
     queue.node.setVolume(newVolume);
 
-    if(queue.node.volume <= 0) {
+    if(queue.node.volume < 0) {
       queue.node.setVolume(0);
       return interaction.reply({
         embeds: [
