@@ -123,6 +123,9 @@ module.exports = {
     //15分間のタイマーはsetTimeoutを使う。5秒ごとの更新はsetIntervalを使う
     const updateInterval = setInterval(async function updatePanel(){
       const queue = interaction.client.player.nodes.get(interaction.guild.id);
+      if (!queue || !queue.node.isPlaying()) {
+        return clearInterval(updateInterval);
+      }
       const track = queue.currentTrack;
       const progress = queue.node.createProgressBar();
       const volume = queue.node.volume;
