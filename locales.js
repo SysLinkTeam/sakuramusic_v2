@@ -1,6 +1,7 @@
 module.exports = {
     en: {
       play: 'Playing now: **{track}**',
+      addedqueue: 'Added to queue: **{track}**',
       no_voice_channel: 'You need to join a voice channel first!',
       no_search_result: 'No results found!',
       loop: 'Now looping the current track!',
@@ -34,6 +35,7 @@ module.exports = {
     },
     ja: {
       play: '再生中: **{track}**',
+      addedqueue: 'キューに追加: **{track}**',
       no_voice_channel: 'ボイスチャンネルに参加してください！',
       no_search_result: '見つかりませんでした！',
       loop: '今の曲を無限ループします！',
