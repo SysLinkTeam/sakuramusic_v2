@@ -26,7 +26,8 @@ module.exports = {
     const track = queue.currentTrack;
     const filters = queue.filters.ffmpeg.filters.join(', ') || 'None';
     const progress = queue.node.createProgressBar();
-    if(queue.node.volume > 10) queue.node.setVolume(10);
+    console.log(queue.node.volume);
+    if(queue.node.volume > 100) queue.node.setVolume(100);
     const volume = queue.node.volume;
 
     const embed = new EmbedBuilder()
