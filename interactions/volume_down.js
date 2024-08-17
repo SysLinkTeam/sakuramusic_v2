@@ -18,9 +18,10 @@ module.exports = {
       });
     }
 
-    if(queue.node.volume > 10) queue.node.setVolume(10);
+    if(queue.node.volume > 100) queue.node.setVolume(100);
+    if(queue.node.volume <= 0) queue.node.setVolume(0);
 
-    const newVolume = queue.node.volume - 1;
+    const newVolume = queue.node.volume - 10;
     queue.node.setVolume(newVolume);
 
     if(queue.node.volume <= 0) {

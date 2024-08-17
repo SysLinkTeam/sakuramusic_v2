@@ -40,7 +40,7 @@ module.exports = {
         { name: 'Duration', value: formatDuration(track.durationMS), inline: true },
         { name: 'Played', value: formatDuration(queue.node.estimatedPlaybackTime), inline: true },
         { name: 'Views', value: track.views.toLocaleString(), inline: true },
-        { name: 'Volume', value: `${volume * 10}%`, inline: true },
+        { name: 'Volume', value: `${volume}%`, inline: true },
         { name: 'Filters', value: filters, inline: true },
         { name: 'Progress', value: progress, inline: false }
       );
@@ -113,10 +113,47 @@ module.exports = {
           ])
       );
 
-    await interaction.reply({
+    const panel = await interaction.reply({
       embeds: [embed],
-      components: [row1, row2, row3]
+      components: [row1, row2/*, row3*/]
     });
+
+    //15分間の間、最新の情報に5秒ごとに更新する
+    //更新する項目は、再生時間、プログレスバー、ボリューム、フィルター
+    //15分間のタイマーはsetTimeoutを使う。5秒ごとの更新はsetIntervalを使う
+    const updateInterval = setInterval(async function updatePanel(){
+      const queue = interaction.client.player.nodes.get(interaction.guild.id);
+      const track = queue.currentTrack;
+      const progress = queue.node.createProgressBar();
+      const volume = queue.node.volume;
+      const filters = queue.filters.ffmpeg.filters.join(', ') || 'None';
+
+      const embed = new EmbedBuilder()
+        .setColor(Colors.Blue)
+        .setTitle(track.title)
+        .setURL(track.url)
+        .setAuthor({ name: track.author })
+        .setThumbnail(track.thumbnail)
+        .addFields(
+          { name: 'Duration', value: formatDuration(track.durationMS), inline: true },
+          { name: 'Played', value: formatDuration(queue.node.estimatedPlaybackTime), inline: true },
+          { name: 'Views', value: track.views.toLocaleString(), inline: true },
+          { name: 'Volume', value: `${volume}%`, inline: true },
+          { name: 'Filters', value: filters, inline: true },
+          { name: 'Progress', value: progress, inline: false }
+        );
+
+      await panel.edit({
+        embeds: [embed],
+        components: [row1, row2/*, row3*/]
+      }).catch(err => {
+        clearInterval(updateInterval);
+      });
+    }, 5000);
+    setTimeout(() => {
+      clearInterval(updateInterval);
+    }, 900000);
+    
   }
 };
 
