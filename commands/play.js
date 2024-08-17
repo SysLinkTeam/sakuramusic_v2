@@ -132,7 +132,7 @@ module.exports = {
           .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
       ]
     }).then(msg => {
-      setTimeout(() => {
+      setTimeout(async () => {
         if(flag){
           interaction.reply = intaraction.followUp;
           const nowplayingIntaraclion = await interaction.client.commands.get('nowplaying').execute(interaction);
