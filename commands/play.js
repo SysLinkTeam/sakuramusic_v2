@@ -134,7 +134,7 @@ module.exports = {
     }).then(msg => {
       setTimeout(async () => {
         if(flag){
-          interaction.reply = intaraction.followUp;
+          interaction.reply = interaction.followUp;
           const nowplayingIntaraclion = await interaction.client.commands.get('nowplaying').execute(interaction);
         }
       }, 1000);
