@@ -1,6 +1,6 @@
 const mariadb = require('mariadb');
 const pool = mariadb.createPool({
-    host: '192.168.100.222',
+    host: '192.168.100.22',
     user: 'sakuramusic_v2',
     password: 'plusmusic',
     database: 'SakuraMusic_v2',
