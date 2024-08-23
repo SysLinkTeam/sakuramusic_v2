@@ -17,7 +17,8 @@ const actionTypes = [
     { name: 'Command Refresh Start', value: 'command_refresh_start' },
     { name: 'Command Refresh End', value: 'command_refresh_end' },
     { name: 'Webhook Send Success', value: 'webhook_send_success' },
-    { name: 'Webhook Send Error', value: 'webhook_send_error' }
+    { name: 'Webhook Send Error', value: 'webhook_send_error' },
+    { name: 'Error', value: 'error' }
 ];
 
 async function getActionTypesChoices() {
@@ -41,7 +42,7 @@ module.exports = {
             option.setName('action_type')
                 .setDescription('特定のアクションタイプで検索します')
                 .setRequired(false)
-                .addChoices(await  getActionTypesChoices()))
+                .addChoices(await getActionTypesChoices()))
         .addStringOption(option =>
             option.setName('command_name')
                 .setDescription('特定のコマンド名で検索します')
