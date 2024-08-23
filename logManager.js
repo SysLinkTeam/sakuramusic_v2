@@ -1,5 +1,12 @@
 const db = require('./database');
 
+function replacer(key, value) {
+    if (typeof value === 'bigint') {
+      return value.toString(); // BigIntを文字列に変換
+    }
+    return value;
+}
+
 // action_typeがデータベースに存在するか確認し、存在しない場合は追加する
 async function ensureActionTypeExists(actionType) {
     const querySelect = 'SELECT id FROM action_types WHERE value = ?';
@@ -27,7 +34,7 @@ async function logAction(guildId, userId, commandName, actionType, details) {
     INSERT INTO bot_logs (guild_id, user_id, command_name, action_type, action_details, timestamp)
     VALUES (?, ?, ?, ?, ?, NOW())
   `;
-    const params = [guildId, userId, commandName, actionType, JSON.stringify(details)];
+    const params = [guildId, userId, commandName, actionType, JSON.stringify(details, replacer)];
 
     try {
         await db.queryWithoutLogging(query, params);
