@@ -20,7 +20,12 @@ const actionTypes = [
     { name: 'Webhook Send Error', value: 'webhook_send_error' }
 ];
 
-const actionTypesChoices = [...Object.entries(await getActionTypes()).map(([value, name]) => ({ name, value }))]
+async function getActionTypesChoices() {
+    const actionTypes = await getActionTypes();
+    return actionTypes.map(actionType => ({ name: actionType, value: actionType }));
+}
+
+const actionTypesChoices = getActionTypesChoices();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -34,7 +39,7 @@ module.exports = {
             option.setName('guild')
                 .setDescription('特定のサーバーIDで検索します')
                 .setRequired(false))
-        .addStringOption(option =>
+        .addStringOption( option =>
             option.setName('action_type')
                 .setDescription('特定のアクションタイプで検索します')
                 .setRequired(false)
