@@ -5,25 +5,11 @@ const { getActionTypes } = require('../logManager'); // ユーティリティ関
 
 const ALLOWED_USER_ID = '796972193287503913';
 
-const actionTypes = [
-    { name: 'Command Execution', value: 'command_execution' },
-    { name: 'Command Error', value: 'command_error' },
-    { name: 'Track Start', value: 'track_start' },
-    { name: 'Track End', value: 'track_end' },
-    { name: 'Queue Create', value: 'queue_create' },
-    { name: 'Queue End', value: 'queue_end' },
-    { name: 'Player Error', value: 'player_error' },
-    { name: 'Bot Startup', value: 'bot_startup' },
-    { name: 'Command Refresh Start', value: 'command_refresh_start' },
-    { name: 'Command Refresh End', value: 'command_refresh_end' },
-    { name: 'Webhook Send Success', value: 'webhook_send_success' },
-    { name: 'Webhook Send Error', value: 'webhook_send_error' },
-    { name: 'Error', value: 'error' }
-];
-
 async function getActionTypesChoices() {
     const actionTypes = await getActionTypes();
-    return actionTypes.map(actionType => ({ name: actionType, value: actionType }));
+    //key=>value,value=>nameとしてオブジェクトに変換
+    return [...Object.keys(actionTypes).forEach(key => actionTypes[key] = { value: key, name: actionTypes[key] })];
+    
 }
 
 module.exports = {
