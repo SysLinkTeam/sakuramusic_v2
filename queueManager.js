@@ -15,15 +15,16 @@ async function getQueue(guildId) {
         'SELECT * FROM queues WHERE guild_id = ?',
         [guildId]
     );
-    return result.length > 0 ? result[0] : null;
+    return result.length > 0 ? result[0].id : null;
 }
 
 // トラックの追加
 async function addTrackToQueue(queueId, track) {
-    await db.query(
+    const result = await db.query(
         'INSERT INTO queue_tracks (queue_id, track_title, track_url, requested_by) VALUES (?, ?, ?, ?)',
         [queueId, track.title, track.url, track.requestedBy.id]
     );
+    return result.insertId;
 }
 
 // キュー内のトラックの取得

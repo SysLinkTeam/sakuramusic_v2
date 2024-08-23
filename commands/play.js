@@ -191,12 +191,12 @@ module.exports = {
     }
 
     const track = result.tracks[0];
-    await addTrackToQueue(queueId, track); // トラックをデータベースに保存
+    const trackId = await addTrackToQueue(queueId, track); // トラックをデータベースに保存
 
     queue.addTrack(track);
 
     if (!queue.node.isPlaying()) {
-      await updateCurrentTrack(queueId, track.id); // 現在のトラックを更新
+      await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
       await queue.node.play();
     } else {
       // 再生中の位置を保存
