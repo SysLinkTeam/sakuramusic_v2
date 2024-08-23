@@ -7,7 +7,7 @@ const { Readable } = require('stream');
 const { getSettings, saveSettings } = require('../settingsManager');
 const { createQueue, addTrackToQueue, updateCurrentTrack, savePlaybackState } = require('../queueManager');
 const locales = require('../locales.js');
-const equalizerPresets = require('./equalizerPresets'); // イコライザープリセットを管理するモジュール
+const { getEqualizerPresets } = require('../equalizer.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,6 +23,7 @@ module.exports = {
         .setRequired(false)),
 
   async execute(interaction) {
+    const equalizerPresets = await getEqualizerPresets();
     const query = interaction.options.getString('query');
     const attachment = interaction.options.getAttachment('attachment');
     const lang = interaction.guild.preferredLocale || 'en';
