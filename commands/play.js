@@ -194,6 +194,9 @@ module.exports = {
     const trackId = await addTrackToQueue(queueId, track); // トラックをデータベースに保存
 
     queue.addTrack(track);
+    
+    // サーバー設定をキューに適用
+    queue.node.setVolume(settings.volume);
 
     if (!queue.node.isPlaying()) {
       await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
