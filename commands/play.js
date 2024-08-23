@@ -5,7 +5,7 @@ const https = require('https');
 const http = require('http');
 const { Readable } = require('stream');
 const { getSettings, saveSettings } = require('../settingsManager');
-const { createQueue, addTrackToQueue, updateCurrentTrack, savePlaybackState } = require('../queueManager');
+const { createQueue, getQueue, addTrackToQueue, updateCurrentTrack, savePlaybackState } = require('../queueManager');
 const locales = require('../locales.js');
 const { getEqualizerPresets } = require('../equalizer.js');
 
@@ -65,6 +65,7 @@ module.exports = {
     }
 
     let queue = interaction.client.player.nodes.get(interaction.guild.id);
+    const queueId = await getQueue(interaction.guild.id).id ?? await createQueue(interaction.guild.id);
     if (!queue) {
       // 新しいキューを作成
       queue = interaction.client.player.nodes.create(interaction.guild, {

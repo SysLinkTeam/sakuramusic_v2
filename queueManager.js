@@ -9,6 +9,15 @@ async function createQueue(guildId) {
     return result.insertId;
 }
 
+//キューの取得
+async function getQueue(guildId) {
+    const result = await db.query(
+        'SELECT * FROM queues WHERE guild_id = ?',
+        [guildId]
+    );
+    return result.length > 0 ? result[0] : null;
+}
+
 // トラックの追加
 async function addTrackToQueue(queueId, track) {
     await db.query(
@@ -53,6 +62,7 @@ async function getPlaybackState(guildId) {
 
 module.exports = {
     createQueue,
+    getQueue,
     addTrackToQueue,
     getQueueTracks,
     updateCurrentTrack,
