@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors, MessageActionRow, MessageButton } = require('discord.js');
 const db = require('../database'); // データベース接続を含むモジュール
+const { getActionTypes } = require('../logManager'); // ユーティリティ関数
 
 const ALLOWED_USER_ID = '796972193287503913';
 
