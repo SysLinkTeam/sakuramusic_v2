@@ -1,5 +1,5 @@
 const { getPlaybackState, getQueueTracks } = require('./queueManager');
-const equalizerPresets = require('./equalizerPresets'); // イコライザー設定を利用
+const { getEqualizerPresets } = require('./equalizer')
 
 async function restorePlayback(interaction) {
     const guildId = interaction.guild.id;
