@@ -81,7 +81,7 @@ client.once('ready', async () => {
         client, 
         channel: guild.channels.cache.find(ch => ch.isTextBased()) 
     };
-    await restorePlayback(interaction);
+    //await restorePlayback(interaction);
   }
 
   setInterval(() => {
