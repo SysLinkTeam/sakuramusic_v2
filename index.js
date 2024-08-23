@@ -4,14 +4,18 @@ const fs = require('fs');
 const path = require('path');
 const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
+const { restorePlayback } = require('./restorePlayback');
+const { logAction } = require('./logManager');  // ログマネージャーをインポート
 const webhookClient = new WebhookClient({ url: URL });
 
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
+  logAction('global', 'system', null, 'error', { message: 'Unhandled promise rejection', error: error.stack });
 });
 
 process.on('uncaughtException', error => {
   console.error('Uncaught exception:', error);
+  logAction('global', 'system', null, 'error', { message: 'Uncaught exception', error: error.stack });
 });
 
 let text = '';
@@ -49,11 +53,13 @@ for (const file of commandFiles) {
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
+  logAction('global', 'system', null, 'bot_startup', { message: `Bot started as ${client.user.tag}` });
 
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
     console.log('Started refreshing application (/) commands.');
+    logAction('global', 'system', null, 'command_refresh_start', { message: 'Started refreshing application (/) commands.' });
 
     await rest.put(
       Routes.applicationCommands(client.user.id),
@@ -61,23 +67,38 @@ client.once('ready', async () => {
     );
 
     console.log('Successfully reloaded application (/) commands.');
+    logAction('global', 'system', null, 'command_refresh_end', { message: 'Successfully reloaded application (/) commands.' });
   } catch (error) {
     console.error(error);
+    logAction('global', 'system', null, 'error', { message: 'Error during command reload', error: error.stack });
   }
 
   await client.player.extractors.loadDefault();
+
+  for (const guild of client.guilds.cache.values()) {
+    const interaction = { 
+        guild, 
+        client, 
+        channel: guild.channels.cache.find(ch => ch.isTextBased()) 
+    };
+    await restorePlayback(interaction);
+  }
 
   setInterval(() => {
     if (text !== '') {
       const chunks = text.match(/[\s\S]{1,1900}/g);
       let i = 0;
       for (const chunk of chunks) {
-        i++
+        i++;
         webhookClient.sendSlackMessage({
           text: `\`\`\`${chunk}\`\`\``,
           username: `[console]${client.user.tag}(${i}/${chunks.length})`,
           icon_url: client.user.displayAvatarURL()
-        })
+        }).then(response => {
+          logAction('global', 'system', null, 'webhook_send_success', { chunk, statusCode: response.statusCode });
+        }).catch(error => {
+          logAction('global', 'system', null, 'webhook_send_error', { chunk, error: error.stack });
+        });
       }
       text = '';
     }
@@ -86,16 +107,18 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
-  await interaction.deferReply({ fetchReply: true })
+  await interaction.deferReply({ fetchReply: true });
   interaction.reply = interaction.editReply;
 
   const command = client.commands.get(interaction.commandName);
   if (command) {
     try {
       await command.execute(interaction);
+      logAction(interaction.guild.id, interaction.user.id, interaction.commandName, 'command_execution', { interaction });
     } catch (error) {
       console.error(error);
       await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+      logAction(interaction.guild.id, interaction.user.id, interaction.commandName, 'command_error', { error: error.stack });
     }
   }
 
@@ -107,9 +130,11 @@ client.on('interactionCreate', async interaction => {
           interaction.deleteReply();
         }, 3000);
         await buttonCommand.execute(interaction);
+        logAction(interaction.guild.id, interaction.user.id, interaction.customId, 'button_interaction', { interaction });
       } catch (error) {
         console.error(error);
         await interaction.reply({ content: 'There was an error while executing this button interaction!', ephemeral: true });
+        logAction(interaction.guild.id, interaction.user.id, interaction.customId, 'button_error', { error: error.stack });
       }
     }
   }
@@ -122,9 +147,11 @@ client.on('interactionCreate', async interaction => {
           interaction.deleteReply();
         }, 3000);
         await selectMenuCommand.execute(interaction);
+        logAction(interaction.guild.id, interaction.user.id, interaction.customId, 'select_menu_interaction', { interaction });
       } catch (error) {
         console.error(error);
         await interaction.reply({ content: 'There was an error while executing this select menu interaction!', ephemeral: true });
+        logAction(interaction.guild.id, interaction.user.id, interaction.customId, 'select_menu_error', { error: error.stack });
       }
     }
   }
@@ -135,6 +162,48 @@ client.player = new Player(client, {
     quality: 'highestaudio',
     highWaterMark: 1 << 25
   }
+});
+
+client.player.on('trackStart', async (queue, track) => {
+  const userId = track.requestedBy.id;
+  const serverId = queue.guild.id;
+
+  await db.query(
+    'INSERT INTO user_play_history (user_id, track_title, track_url, played_at) VALUES (?, ?, ?, ?)',
+    [userId, track.title, track.url, new Date()]
+  );
+
+  await db.query(
+    'INSERT INTO server_play_history (server_id, track_title, track_url, played_at) VALUES (?, ?, ?, ?)',
+    [serverId, track.title, track.url, new Date()]
+  );
+
+  logAction(serverId, userId, null, 'track_start', { track });
+});
+
+client.player.on('trackEnd', async (queue, track) => {
+  const userId = track.requestedBy.id;
+  const serverId = queue.guild.id;
+
+  logAction(serverId, userId, null, 'track_end', { track });
+});
+
+client.player.on('queueCreate', async (queue) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'queue_create', { queue });
+});
+
+client.player.on('queueEnd', async (queue) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'queue_end', { queue });
+});
+
+client.player.on('error', async (queue, error) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'player_error', { error: error.stack });
 });
 
 client.login(token);

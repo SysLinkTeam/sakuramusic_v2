@@ -28,7 +28,7 @@ module.exports = {
       });
     }
 
-    queue.node.setVolume(volume / 10);
+    queue.node.setVolume(volume);
     await interaction.reply({
       embeds: [
         new EmbedBuilder()
