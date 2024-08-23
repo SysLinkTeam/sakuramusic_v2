@@ -7,9 +7,10 @@ const ALLOWED_USER_ID = '796972193287503913';
 
 async function getActionTypesChoices() {
     const actionTypes = await getActionTypes();
+    console.log(actionTypes);
     let choices = [];
     //key=>value,value=>nameとしてオブジェクトに変換
-    Object.keys(actionTypes).forEach(key => choices.push({ value: key, name: actionTypes[key] }));
+    Object.keys(actionTypes).forEach(key => choices.push({ value: key, name: actionTypes[key]}));
     return choices;
 }
 
