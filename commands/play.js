@@ -57,8 +57,8 @@ module.exports = {
     let settings = await getSettings(interaction.guild.id);
     if (!settings) {
       settings = {
-        volume: 50, // デフォルトの音量
-        loopState: 'noloop', // デフォルトのループモード
+        volume: 100, // デフォルトの音量
+        loopState: 'none', // デフォルトのループモード
         equalizer: 'Default' // デフォルトのイコライザープリセット
       };
       await saveSettings(interaction.guild.id, settings);
