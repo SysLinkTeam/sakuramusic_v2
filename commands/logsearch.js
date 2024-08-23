@@ -25,8 +25,6 @@ async function getActionTypesChoices() {
     return actionTypes.map(actionType => ({ name: actionType, value: actionType }));
 }
 
-const actionTypesChoices = getActionTypesChoices();
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('logsearch')
@@ -39,11 +37,11 @@ module.exports = {
             option.setName('guild')
                 .setDescription('特定のサーバーIDで検索します')
                 .setRequired(false))
-        .addStringOption( option =>
+        .addStringOption( async option =>
             option.setName('action_type')
                 .setDescription('特定のアクションタイプで検索します')
                 .setRequired(false)
-                .addChoices(actionTypesChoices))
+                .addChoices(await  getActionTypesChoices()))
         .addStringOption(option =>
             option.setName('command_name')
                 .setDescription('特定のコマンド名で検索します')
