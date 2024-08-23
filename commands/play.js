@@ -191,17 +191,17 @@ module.exports = {
     }
 
     const track = result.tracks[0];
-    await addTrackToQueue(queue.id, track); // トラックをデータベースに保存
+    await addTrackToQueue(queueId, track); // トラックをデータベースに保存
 
     queue.addTrack(track);
 
     if (!queue.node.isPlaying()) {
-      await updateCurrentTrack(queue.id, track.id); // 現在のトラックを更新
+      await updateCurrentTrack(queueId, track.id); // 現在のトラックを更新
       await queue.node.play();
     } else {
       // 再生中の位置を保存
       queue.node.on('trackEnd', async (track) => {
-        await savePlaybackState(queue.id, track, queue.node.getCurrentTime());
+        await savePlaybackState(queueId, track, queue.node.getCurrentTime());
       });
     }
 
