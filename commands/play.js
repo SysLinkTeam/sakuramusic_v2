@@ -133,13 +133,9 @@ module.exports = {
         });
       }
 
-      // サーバー設定をキューに適用
-      queue.node.setVolume(settings.volume);
-      queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
-
       // ループ設定を反映
       let loopMode;
-      if (settings.loopState === 'noloop') loopMode = 0;
+      if (settings.loopState === 'none') loopMode = 0;
       else if (settings.loopState === 'loop') loopMode = 1;
       else if (settings.loopState === 'queueloop') loopMode = 2;
       queue.setRepeatMode(loopMode);
@@ -220,6 +216,10 @@ module.exports = {
         await interaction.client.commands.get('nowplaying').execute(interaction);
       }, 1000);
     });
+
+    // サーバー設定をキューに適用
+    queue.node.setVolume(settings.volume);
+    queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
 
     // 再生後の設定を保存
     await saveSettings(interaction.guild.id, {
