@@ -11,6 +11,7 @@ async function getActionTypesChoices() {
     let choices = [];
     //key=>value,value=>nameとしてオブジェクトに変換
     Object.keys(actionTypes).forEach(key => choices.push({ value: key, name: actionTypes[key]}));
+    console.log(choices);
     return choices;
 }
 
