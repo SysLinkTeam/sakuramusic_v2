@@ -105,7 +105,45 @@ module.exports = {
           }
         }
       });
+      try {
+        if (!queue.connection) await queue.connect(channel);
+      } catch {
+        queue.destroy();
+        return interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(Colors.Red)
+              .setDescription(`${locale.no_voice_channel} :x:`)
+          ],
+          ephemeral: true
+        });
+      }
+    } else {
+      // 既存のキューがある場合はボイスチャンネルに接続されているか確認
+      if (!queue.connection) {
+        try {
+          await queue.connect(channel);
+        } catch {
+          queue.destroy();
+          return interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(Colors.Red)
+                .setDescription(`${locale.no_voice_channel} :x:`)
+            ],
+            ephemeral: true
+          });
+        }
+      }
     }
+
+
+    // ループ設定を反映
+    let loopMode;
+    if (settings.loopState === 'none') loopMode = 0;
+    else if (settings.loopState === 'loop') loopMode = 1;
+    else if (settings.loopState === 'queueloop') loopMode = 2;
+    queue.setRepeatMode(loopMode);
 
     const result = await interaction.client.player.search(track.track_url, {
       requestedBy: interaction.user
