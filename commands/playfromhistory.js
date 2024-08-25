@@ -108,7 +108,7 @@ module.exports = {
       try {
         if (!queue.connection) await queue.connect(channel);
       } catch {
-        queue.destroy();
+
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
@@ -124,7 +124,6 @@ module.exports = {
         try {
           await queue.connect(channel);
         } catch {
-          queue.destroy();
           return interaction.reply({
             embeds: [
               new EmbedBuilder()
