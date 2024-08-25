@@ -26,7 +26,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(Colors.Blue)
       .setTitle('サーバーの再生履歴')
-      .setDescription(results.map(row => `[${row.track_title}](${row.track_url}) (${new Date(row.played_at).toLocaleString()})`).join('\n'));
+      .setDescription(results.map((row, index) => `**${index + 1}: **[${row.track_title}](${row.track_url}) (${new Date(row.played_at).toLocaleString()})`).join('\n'));
 
     await interaction.reply({ embeds: [embed] });
   }
