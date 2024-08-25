@@ -43,7 +43,7 @@ async function getUserPlayHistory(userId,page) {
     }
 }
 
-async function getServerPlayHistory(serverId,page) {
+async function getServerPlayHistory(serverId, page) {
     const query = `
     SELECT * FROM server_play_history WHERE server_id = ? ORDER BY played_at DESC LIMIT 10 OFFSET ?
   `;

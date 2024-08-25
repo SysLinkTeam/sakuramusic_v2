@@ -5,8 +5,8 @@ const path = require('path');
 const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const { restorePlayback } = require('./restorePlayback');
-const {updateCurrentTrack} = require('./queueManager');
-const { logAction } = require('./logManager'); 
+const { updateCurrentTrack } = require('./queueManager');
+const { logAction } = require('./logManager');
 const { createUserHistoryEntry, createServerHistoryEntry } = require('./historyManager');
 const webhookClient = new WebhookClient({ url: URL });
 
@@ -78,10 +78,10 @@ client.once('ready', async () => {
   await client.player.extractors.loadDefault();
 
   for (const guild of client.guilds.cache.values()) {
-    const interaction = { 
-        guild, 
-        client, 
-        channel: guild.channels.cache.find(ch => ch.isTextBased()) 
+    const interaction = {
+      guild,
+      client,
+      channel: guild.channels.cache.find(ch => ch.isTextBased())
     };
     //await restorePlayback(interaction);
   }

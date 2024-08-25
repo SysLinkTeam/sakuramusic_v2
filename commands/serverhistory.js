@@ -5,12 +5,17 @@ const { getServerPlayHistory } = require('../historyManager');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('serverhistory')
-    .setDescription('このサーバーの再生履歴を表示します。'),
+    .setDescription('このサーバーの再生履歴を表示します。')
+    .addIntegerOption(option =>
+      option.setName('page')
+        .setDescription('ページ番号')
+        .setRequired(false)),
   
   async execute(interaction) {
     const serverId = interaction.guild.id;
+    const page = interaction.options.getInteger('page') || 1;
     
-    const results = await getServerPlayHistory(serverId);
+    const results = await getServerPlayHistory(serverId, page - 1);
 
     if (results.length === 0) {
       return interaction.reply({
