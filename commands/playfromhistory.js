@@ -23,6 +23,8 @@ module.exports = {
     const userId = interaction.user.id;
     const index = interaction.options.getInteger('index');
     const serverHistory = interaction.options.getBoolean('serverhistory');
+    const lang = interaction.guild.preferredLocale || 'en';
+    const locale = locales[lang] || locales['en'];
 
     let results = [];
 
