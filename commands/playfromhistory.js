@@ -41,10 +41,10 @@ module.exports = {
     }
 
     const track = results[index - 1];
-    const queue = interaction.client.player.nodes.get(interaction.guild.id);
+    let queue = interaction.client.player.nodes.get(interaction.guild.id);
     if (!queue) {
       // キューが存在しない場合は新規作成
-        queue = interaction.client.player.nodes.create(interaction.guild.id, {
+        queue = interaction.client.player.nodes.create(interaction.guild, {
           metadata: {
             channel: interaction.channel
           },
