@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors } = require('discord.js');
 const { getUserPlayHistory, getServerPlayHistory } = require('../historyManager');
+const { addTrackToQueue, updateCurrentTrack } = require('../queueManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
