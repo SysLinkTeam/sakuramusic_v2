@@ -65,7 +65,7 @@ module.exports = {
     }
 
     let queue = interaction.client.player.nodes.get(interaction.guild.id);
-    const queueId = await getQueue(interaction.guild.id).id ?? await createQueue(interaction.guild.id);
+    const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
     if (!queue) {
       // 新しいキューを作成
       queue = interaction.client.player.nodes.create(interaction.guild, {
@@ -196,9 +196,10 @@ module.exports = {
     if (!queue.node.isPlaying()) {
       await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
       await queue.node.play();
-    } else {
-      // 再生中の位置を保存
       queue.node.on('trackEnd', async (track) => {
+        await savePlaybackState(queueId, null, queue.node.getCurrentTime());
+      });
+      queue.node.on('trackStart', async (track) => {
         await savePlaybackState(queueId, track, queue.node.getCurrentTime());
       });
     }

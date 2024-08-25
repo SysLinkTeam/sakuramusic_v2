@@ -164,7 +164,7 @@ client.player = new Player(client, {
   }
 });
 
-client.player.on('trackStart', async (queue, track) => {
+client.player.on('playerStart', async (queue, track) => {
   const userId = track.requestedBy.id;
   const serverId = queue.guild.id;
 
@@ -181,7 +181,7 @@ client.player.on('trackStart', async (queue, track) => {
   logAction(serverId, userId, null, 'track_start', { track });
 });
 
-client.player.on('trackEnd', async (queue, track) => {
+client.player.on('playerFinish', async (queue, track) => {
   const userId = track.requestedBy.id;
   const serverId = queue.guild.id;
 
@@ -194,7 +194,7 @@ client.player.on('queueCreate', async (queue) => {
   logAction(serverId, 'system', null, 'queue_create', { queue });
 });
 
-client.player.on('queueEnd', async (queue) => {
+client.player.on('queueDelete', async (queue) => {
   const serverId = queue.guild.id;
 
   logAction(serverId, 'system', null, 'queue_end', { queue });
@@ -206,4 +206,33 @@ client.player.on('error', async (queue, error) => {
   logAction(serverId, 'system', null, 'player_error', { error: error.stack });
 });
 
+client.player.on('volumeChange', async (queue, track) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'volume_change', { volume: queue.volume });
+});
+
+client.player.on('playerSkip', async (queue, track) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'track_skip', { track });
+});
+
+client.player.on('playerPause', async (queue, track) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'track_pause', { track });
+});
+
+client.player.on('playerResume', async (queue, track) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'track_resume', { track });
+});
+
+client.player.on('playerError', async (queue, error) => {
+  const serverId = queue.guild.id;
+
+  logAction(serverId, 'system', null, 'player_error', { error: error.stack });
+});
 client.login(token);
