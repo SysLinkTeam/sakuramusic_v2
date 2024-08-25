@@ -4,6 +4,7 @@ const { getUserPlayHistory, getServerPlayHistory } = require('../historyManager'
 const { addTrackToQueue, updateCurrentTrack } = require('../queueManager');
 const { createQueue, getQueue } = require('../queueManager');
 const { getSettings, saveSettings } = require('../settingsManager');
+const locales = require('../locales.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
