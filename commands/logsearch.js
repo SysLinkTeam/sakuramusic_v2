@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { EmbedBuilder, Colors, MessageActionRow, MessageButton } = require('discord.js');
+const { EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder } = require('discord.js');
 const db = require('../database'); // データベース接続を含むモジュール
 const { getActionTypes } = require('../logManager'); // ユーティリティ関数
 
@@ -181,14 +181,14 @@ module.exports = {
             return embed;
         };
 
-        const row = new MessageActionRow()
+        const row = new ActionRowBuilder()
             .addComponents(
-                new MessageButton()
+                new ButtonBuilder()
                     .setCustomId('prev')
                     .setLabel('前のページ')
                     .setStyle('PRIMARY')
                     .setDisabled(page === 0),
-                new MessageButton()
+                new ButtonBuilder()
                     .setCustomId('next')
                     .setLabel('次のページ')
                     .setStyle('PRIMARY')
@@ -213,12 +213,12 @@ module.exports = {
                 embeds: [getPageEmbed(page)], components: [
                     new MessageActionRow()
                         .addComponents(
-                            new MessageButton()
+                            new ButtonBuilder()
                                 .setCustomId('prev')
                                 .setLabel('前のページ')
                                 .setStyle('PRIMARY')
                                 .setDisabled(page === 0),
-                            new MessageButton()
+                            new ButtonBuilder()
                                 .setCustomId('next')
                                 .setLabel('次のページ')
                                 .setStyle('PRIMARY')
