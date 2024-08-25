@@ -21,6 +21,22 @@ const actionTypes = [
     { name: 'Error', value: 'error' }
 ];
 
+function censor(censor) {
+    var i = 0;
+
+    return function (key, value) {
+        if (i !== 0 && typeof (censor) === 'object' && typeof (value) == 'object' && censor == value)
+            return '[Circular]';
+
+        if (i >= 29) // seems to be a harded maximum of 30 serialized objects?
+            return '[Unknown]';
+
+        ++i; // so we know we aren't using the original object anymore
+
+        return value;
+    }
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('logsearch')
@@ -186,12 +202,12 @@ module.exports = {
                 new ButtonBuilder()
                     .setCustomId('prev')
                     .setLabel('前のページ')
-                    .setStyle('PRIMARY')
+                    .setStyle('Primary')
                     .setDisabled(page === 0),
                 new ButtonBuilder()
                     .setCustomId('next')
                     .setLabel('次のページ')
-                    .setStyle('PRIMARY')
+                    .setStyle('Primary')
                     .setDisabled(page === totalPages - 1)
             );
 
@@ -216,12 +232,12 @@ module.exports = {
                             new ButtonBuilder()
                                 .setCustomId('prev')
                                 .setLabel('前のページ')
-                                .setStyle('PRIMARY')
+                                .setStyle('Primary')
                                 .setDisabled(page === 0),
                             new ButtonBuilder()
                                 .setCustomId('next')
                                 .setLabel('次のページ')
-                                .setStyle('PRIMARY')
+                                .setStyle('Primary')
                                 .setDisabled(page === totalPages - 1)
                         )
                 ]
