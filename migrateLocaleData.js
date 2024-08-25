@@ -1,5 +1,5 @@
 const { queryWithoutLogging } = require('./database'); // database.jsのインポート
-const localeData = require('./locale.js'); // locale.jsのパスに応じて調整
+const localeData = require('./locales.js'); // locale.jsのパスに応じて調整
 
 async function migrateLocaleData() {
     try {
