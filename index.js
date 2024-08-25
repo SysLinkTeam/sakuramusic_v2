@@ -111,7 +111,6 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
   await interaction.deferReply({ fetchReply: true });
   interaction.reply = interaction.editReply;
-console.log(client.commands);
   const command = client.commands.get(interaction.commandName);
   if (command) {
     try {
