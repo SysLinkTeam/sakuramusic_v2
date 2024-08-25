@@ -44,7 +44,7 @@ module.exports = {
     const queue = interaction.client.player.nodes.get(interaction.guild.id);
     if (!queue) {
       // キューが存在しない場合は新規作成
-        queue = interaction.client.player.nodes.create(interaction.guild, {
+        queue = interaction.client.player.nodes.create(interaction.guild.id, {
           metadata: {
             channel: interaction.channel
           },
