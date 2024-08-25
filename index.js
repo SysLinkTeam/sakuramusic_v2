@@ -6,7 +6,8 @@ const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const { restorePlayback } = require('./restorePlayback');
 const {updateCurrentTrack} = require('./queueManager');
-const { logAction, createUserHistoryEntry, createServerHistoryEntry } = require('./logManager');  // ログマネージャーをインポート
+const { logAction } = require('./logManager'); 
+const { createUserHistoryEntry, createServerHistoryEntry } = require('./historyManager');
 const webhookClient = new WebhookClient({ url: URL });
 
 process.on('unhandledRejection', error => {

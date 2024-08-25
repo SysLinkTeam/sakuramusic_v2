@@ -1,18 +1,21 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors } = require('discord.js');
-const db = require('../database'); // データベース接続
+const { getUserPlayHistory } = require('../historyManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('userhistory')
-    .setDescription('あなたの再生履歴を表示します。'),
-  
+    .setDescription('あなたの再生履歴を表示します。')
+    .addIntegerOption(option =>
+      option.setName('page')
+        .setDescription('ページ番号')
+        .setRequired(false)),
+
   async execute(interaction) {
     const userId = interaction.user.id;
-    const results = await db.query(
-      'SELECT track_title, track_url, played_at FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 10',
-      [userId]
-    );
+    const page = interaction.options.getInteger('page') || 1;
+
+    const results = await getUserPlayHistory(userId, page - 1);
 
     if (results.length === 0) {
       return interaction.reply({

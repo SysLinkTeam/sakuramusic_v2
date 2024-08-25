@@ -56,33 +56,7 @@ async function getActionTypes() {
         return {};
     }
 }
-
-async function createUserHistoryEntry(userId, track) {
-    const query = `
-    INSERT INTO user_play_history (user_id, track_title, track_url, played_at)
-    VALUES (?, ?, ?, NOW())
-  `;
-    const params = [userId, track.title, track.url];
-
-    try {
-        await db.query(query, params);
-    } catch (error) {
-        console.error('Failed to create user history entry:', error);
-    }
-}
-
-async function createServerHistoryEntry(serverId, track) {
-    const query = `
-    INSERT INTO server_play_history (server_id, track_title, track_url, played_at)
-    VALUES (?, ?, ?, NOW())
-  `;
-    const params = [serverId, track.title, track.url];
-
-    try {
-        await db.query(query, params);
-    } catch (error) {
-        console.error('Failed to create server history entry:', error);
-    }
-}
-
-module.exports = { logAction, getActionTypes, createUserHistoryEntry, createServerHistoryEntry };
+module.exports = { 
+    logAction, 
+    getActionTypes
+};

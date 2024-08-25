@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors } = require('discord.js');
-const db = require('../database'); // データベース接続
+const { getServerPlayHistory } = require('../historyManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,10 +9,8 @@ module.exports = {
   
   async execute(interaction) {
     const serverId = interaction.guild.id;
-    const results = await db.query(
-      'SELECT track_title, track_url, played_at FROM server_play_history WHERE server_id = ? ORDER BY played_at DESC LIMIT 10',
-      [serverId]
-    );
+    
+    const results = await getServerPlayHistory(serverId);
 
     if (results.length === 0) {
       return interaction.reply({
