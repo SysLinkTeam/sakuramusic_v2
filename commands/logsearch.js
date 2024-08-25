@@ -227,7 +227,7 @@ module.exports = {
 
             await i.update({
                 embeds: [getPageEmbed(page)], components: [
-                    new MessageActionRow()
+                    new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
                                 .setCustomId('prev')
