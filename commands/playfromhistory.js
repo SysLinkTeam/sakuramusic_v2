@@ -26,7 +26,7 @@ module.exports = {
     const lang = interaction.guild.preferredLocale || 'en';
     const locale = locales[lang] || locales['en'];
     const channel = interaction.member.voice.channel;
-    
+
 
     let results = [];
 
@@ -102,7 +102,6 @@ module.exports = {
                 });
               });
             }
-            if (attachment) return await streamMusic(track.url);
             return await streamMusic(apiUrl);
           } catch (error) {
             console.error('Error fetching audio stream:', error);
