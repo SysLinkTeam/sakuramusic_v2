@@ -44,13 +44,7 @@ async function updateCurrentTrack(queueId, trackId) {
     );
 }
 
-// 再生状態の保存
-async function savePlaybackState(queueId, track, position) {
-    await db.query(
-        'UPDATE queues SET current_track_id = ?, current_position = ? WHERE id = ?',
-        [track.id, position, queueId]
-    );
-}
+
 
 // 再生状態の取得
 async function getPlaybackState(guildId) {
@@ -67,6 +61,5 @@ module.exports = {
     addTrackToQueue,
     getQueueTracks,
     updateCurrentTrack,
-    savePlaybackState,
     getPlaybackState
 };

@@ -5,7 +5,7 @@ const https = require('https');
 const http = require('http');
 const { Readable } = require('stream');
 const { getSettings, saveSettings } = require('../settingsManager');
-const { createQueue, getQueue, addTrackToQueue, updateCurrentTrack, savePlaybackState } = require('../queueManager');
+const { createQueue, getQueue, addTrackToQueue, updateCurrentTrack } = require('../queueManager');
 const locales = require('../locales.js');
 const { getEqualizerPresets } = require('../equalizer.js');
 
