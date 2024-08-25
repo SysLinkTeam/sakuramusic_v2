@@ -6,7 +6,7 @@ const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const { restorePlayback } = require('./restorePlayback');
 const {updateCurrentTrack, savePlaybackState} = require('./queueManager');
-const { logAction, createUserHistoryEntry, createServerHistoryEnrty } = require('./logManager');  // ログマネージャーをインポート
+const { logAction, createUserHistoryEntry, createServerHistoryEntry } = require('./logManager');  // ログマネージャーをインポート
 const webhookClient = new WebhookClient({ url: URL });
 
 process.on('unhandledRejection', error => {
@@ -170,7 +170,7 @@ client.player.events.on('playerStart', async (queue, track) => {
   const serverId = queue.guild.id;
 
   createUserHistoryEntry(userId, track);
-  createServerHistoryEnrty(serverId, track);
+  createServerHistoryEntry(serverId, track);
 
   savePlaybackState(queue.guild.id, track, 0);
 
