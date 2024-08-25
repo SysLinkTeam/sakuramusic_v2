@@ -1,5 +1,21 @@
 const db = require('./database');
 
+function censor(censor) {
+    var i = 0;
+
+    return function (key, value) {
+        if (i !== 0 && typeof (censor) === 'object' && typeof (value) == 'object' && censor == value)
+            return '[Circular]';
+
+        if (i >= 29) // seems to be a harded maximum of 30 serialized objects?
+            return '[Unknown]';
+
+        ++i; // so we know we aren't using the original object anymore
+
+        return value;
+    }
+}
+
 function replacer(key, value) {
     if (typeof value === 'bigint') {
       return value.toString(); // BigIntを文字列に変換
@@ -34,7 +50,7 @@ async function logAction(guildId, userId, commandName, actionType, details) {
     INSERT INTO bot_logs (guild_id, user_id, command_name, action_type, action_details, timestamp)
     VALUES (?, ?, ?, ?, ?, NOW())
   `;
-    const params = [guildId, userId, commandName, actionType, JSON.stringify(details, replacer)];
+    const params = [guildId, userId, commandName, actionType, JSON.stringify(JSON.parse(JSON.stringify(details, replacer)), censor(details))];
 
     try {
         await db.queryWithoutLogging(query, params);
