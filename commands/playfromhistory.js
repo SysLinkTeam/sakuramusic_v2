@@ -25,6 +25,8 @@ module.exports = {
     const serverHistory = interaction.options.getBoolean('serverhistory');
     const lang = interaction.guild.preferredLocale || 'en';
     const locale = locales[lang] || locales['en'];
+    const channel = interaction.member.voice.channel;
+    
 
     let results = [];
 
