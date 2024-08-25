@@ -24,6 +24,7 @@ module.exports = {
     }
 
     const track = queue.currentTrack;
+    if (track.url.startsWith("https://cdn.discordapp.com/ephemeral-attachments/")) return await interaction.reply("You can't use control panel when your playing from attachment.")
     const filters = queue.filters.ffmpeg.filters.join(', ') || 'None';
     const progress = queue.node.createProgressBar();
     const volume = queue.node.volume;
