@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors } = require('discord.js');
 const { getUserPlayHistory, getServerPlayHistory } = require('../historyManager');
 const { addTrackToQueue, updateCurrentTrack } = require('../queueManager');
+const { createQueue, getQueue } = require('../queueManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,6 +23,7 @@ module.exports = {
     const serverHistory = interaction.options.getBoolean('serverhistory');
 
     let results = [];
+    
 
     const page = Math.floor(index / 10);
     if (serverHistory) {
@@ -40,7 +42,7 @@ module.exports = {
         ephemeral: true
       });
     }
-
+    const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
     const track = results[index - 1];
     let queue = interaction.client.player.nodes.get(interaction.guild.id);
     if (!queue) {
