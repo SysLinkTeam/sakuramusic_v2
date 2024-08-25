@@ -92,20 +92,45 @@ module.exports = {
         });
     }
 
-    const trackInfo = await interaction.client.player.search(track.track_url, {
+    const result = await interaction.client.player.search(track.track_url, {
       requestedBy: interaction.user
     });
 
-    queue.addTrack(trackInfo.tracks[0]);
+    const trackInfo = result.tracks[0];
+    const trackId = await addTrackToQueue(queueId, trackInfo); // トラックをデータベースに保存
+
+    queue.addTrack(trackInfo);
+    
+    // サーバー設定をキューに適用
+    queue.node.setVolume(settings.volume);
+
+    if (!queue.node.isPlaying()) {
+      await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
+      await queue.node.play();
+    }
 
     await interaction.reply({
       embeds: [
         new EmbedBuilder()
           .setColor(Colors.Green)
-          .setDescription(`**${track.track_title}** を再生キューに追加しました。`)
+          .setDescription(`${locale.play.replace('{track}', trackInfo.title)} :musical_note:`)
       ]
+    }).then(msg => {
+      setTimeout(async () => {
+        interaction.reply = interaction.followUp;
+        await interaction.client.commands.get('nowplaying').execute(interaction);
+      }, 1000);
     });
 
-    if (!queue.playing) queue.node.play();
+    // サーバー設定をキューに適用
+    queue.node.setVolume(settings.volume);
+    //queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
+
+    // 再生後の設定を保存
+    await saveSettings(interaction.guild.id, {
+      volume: queue.node.volume,
+      loopState: settings.loopState,
+      equalizer: settings.equalizer
+    });
   }
 };
