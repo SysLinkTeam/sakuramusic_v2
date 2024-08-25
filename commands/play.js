@@ -223,7 +223,7 @@ module.exports = {
 
     // サーバー設定をキューに適用
     queue.node.setVolume(settings.volume);
-    queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
+    //queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
 
     // 再生後の設定を保存
     await saveSettings(interaction.guild.id, {
