@@ -5,6 +5,7 @@ const path = require('path');
 const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const { restorePlayback } = require('./restorePlayback');
+const {updateCurrentTrack, savePlaybackState} = require('./queueManager');
 const { logAction } = require('./logManager');  // ログマネージャーをインポート
 const webhookClient = new WebhookClient({ url: URL });
 
@@ -178,12 +179,16 @@ client.player.on('playerStart', async (queue, track) => {
     [serverId, track.title, track.url, new Date()]
   );
 
+  savePlaybackState(queue.guild.id, track, 0);
+
   logAction(serverId, userId, null, 'track_start', { track });
 });
 
 client.player.on('playerFinish', async (queue, track) => {
   const userId = track.requestedBy.id;
   const serverId = queue.guild.id;
+
+  savePlaybackState(queue.guild.id, null, 0);
 
   logAction(serverId, userId, null, 'track_end', { track });
 });

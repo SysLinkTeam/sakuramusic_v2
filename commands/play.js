@@ -196,12 +196,6 @@ module.exports = {
     if (!queue.node.isPlaying()) {
       await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
       await queue.node.play();
-      queue.node.on('trackEnd', async (track) => {
-        await savePlaybackState(queueId, null, queue.node.getCurrentTime());
-      });
-      queue.node.on('trackStart', async (track) => {
-        await savePlaybackState(queueId, track, queue.node.getCurrentTime());
-      });
     }
 
     await interaction.reply({
