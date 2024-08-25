@@ -74,11 +74,6 @@ module.exports = {
         },
         async onBeforeCreateStream(track, source, _queue) {
           try {
-            if (attachment) {
-              // 添付ファイルの場合はそのままストリームを作成
-              return source;
-            }
-
             // YouTubeリンクの処理
             const youtubeUrl = track.url;  
             const encodedUrl = encodeURIComponent(youtubeUrl);
@@ -111,7 +106,7 @@ module.exports = {
                 });
               });
             }
-
+            if (attachment) return await streamMusic(track.url);
             return await streamMusic(apiUrl);
           } catch (error) {
             console.error('Error fetching audio stream:', error);
