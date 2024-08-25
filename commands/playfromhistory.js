@@ -1,5 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, Colors } = require('discord.js');
+const https = require('https');
+const http = require('http');
+const { Readable } = require('stream');
 const { getUserPlayHistory, getServerPlayHistory } = require('../historyManager');
 const { addTrackToQueue, updateCurrentTrack } = require('../queueManager');
 const { createQueue, getQueue } = require('../queueManager');
