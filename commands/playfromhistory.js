@@ -8,7 +8,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('playfromhistory')
     .setDescription('再生履歴から曲を再生キューに追加します。')
-    .addIntegerOption(option => 
+    .addIntegerOption(option =>
       option.setName('index')
         .setDescription('再生履歴のインデックスを指定してください。')
         .setRequired(true))
@@ -23,7 +23,7 @@ module.exports = {
     const serverHistory = interaction.options.getBoolean('serverhistory');
 
     let results = [];
-    
+
 
     const page = Math.floor(index / 10);
     if (serverHistory) {
@@ -42,57 +42,68 @@ module.exports = {
         ephemeral: true
       });
     }
+
+    let settings = await getSettings(interaction.guild.id);
+    if (!settings) {
+      settings = {
+        volume: 100, // デフォルトの音量
+        loopState: 'none', // デフォルトのループモード
+        equalizer: 'Default' // デフォルトのイコライザープリセット
+      };
+      await saveSettings(interaction.guild.id, settings);
+    }
+
     const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
     const track = results[index - 1];
     let queue = interaction.client.player.nodes.get(interaction.guild.id);
     if (!queue) {
       // キューが存在しない場合は新規作成
-        queue = interaction.client.player.nodes.create(interaction.guild, {
-          metadata: {
-            channel: interaction.channel
-          },
-          async onBeforeCreateStream(track, source, _queue) {
-            try {
-              // YouTubeリンクの処理
-              const youtubeUrl = track.url;  
-              const encodedUrl = encodeURIComponent(youtubeUrl);
-              const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
-  
-              function streamMusic(url) {
-                return new Promise((resolve, reject) => {
-                  const protocol = url.startsWith('https') ? https : http;
-  
-                  protocol.get(url, (response) => {
-                    if (response.statusCode !== 200) {
-                      return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
-                    }
-  
-                    const stream = new Readable({
-                      read() { }
-                    });
-  
-                    response.on('data', (chunk) => {
-                      stream.push(chunk);
-                    });
-  
-                    response.on('end', () => {
-                      stream.push(null); // 終了を示す
-                    });
-  
-                    resolve(stream);
-                  }).on('error', (err) => {
-                    reject(err);
+      queue = interaction.client.player.nodes.create(interaction.guild, {
+        metadata: {
+          channel: interaction.channel
+        },
+        async onBeforeCreateStream(track, source, _queue) {
+          try {
+            // YouTubeリンクの処理
+            const youtubeUrl = track.url;
+            const encodedUrl = encodeURIComponent(youtubeUrl);
+            const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
+
+            function streamMusic(url) {
+              return new Promise((resolve, reject) => {
+                const protocol = url.startsWith('https') ? https : http;
+
+                protocol.get(url, (response) => {
+                  if (response.statusCode !== 200) {
+                    return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
+                  }
+
+                  const stream = new Readable({
+                    read() { }
                   });
+
+                  response.on('data', (chunk) => {
+                    stream.push(chunk);
+                  });
+
+                  response.on('end', () => {
+                    stream.push(null); // 終了を示す
+                  });
+
+                  resolve(stream);
+                }).on('error', (err) => {
+                  reject(err);
                 });
-              }
-              if (attachment) return await streamMusic(track.url);
-              return await streamMusic(apiUrl);
-            } catch (error) {
-              console.error('Error fetching audio stream:', error);
-              throw error;
+              });
             }
+            if (attachment) return await streamMusic(track.url);
+            return await streamMusic(apiUrl);
+          } catch (error) {
+            console.error('Error fetching audio stream:', error);
+            throw error;
           }
-        });
+        }
+      });
     }
 
     const result = await interaction.client.player.search(track.track_url, {
@@ -103,7 +114,7 @@ module.exports = {
     const trackId = await addTrackToQueue(queueId, trackInfo); // トラックをデータベースに保存
 
     queue.addTrack(trackInfo);
-    
+
     // サーバー設定をキューに適用
     queue.node.setVolume(settings.volume);
 
