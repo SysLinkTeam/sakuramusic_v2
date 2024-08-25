@@ -6,7 +6,7 @@ const { token, URL } = require('./config.json');
 const { WebhookClient } = require('discord.js');
 const { restorePlayback } = require('./restorePlayback');
 const {updateCurrentTrack, savePlaybackState} = require('./queueManager');
-const { logAction } = require('./logManager');  // ログマネージャーをインポート
+const { logAction, createUserHistoryEntry, createServerHistoryEnrty } = require('./logManager');  // ログマネージャーをインポート
 const webhookClient = new WebhookClient({ url: URL });
 
 process.on('unhandledRejection', error => {
@@ -169,15 +169,8 @@ client.player.events.on('playerStart', async (queue, track) => {
   const userId = track.requestedBy.id;
   const serverId = queue.guild.id;
 
-  await db.query(
-    'INSERT INTO user_play_history (user_id, track_title, track_url, played_at) VALUES (?, ?, ?, ?)',
-    [userId, track.title, track.url, new Date()]
-  );
-
-  await db.query(
-    'INSERT INTO server_play_history (server_id, track_title, track_url, played_at) VALUES (?, ?, ?, ?)',
-    [serverId, track.title, track.url, new Date()]
-  );
+  createUserHistoryEntry(userId, track);
+  createServerHistoryEnrty(serverId, track);
 
   savePlaybackState(queue.guild.id, track, 0);
 
