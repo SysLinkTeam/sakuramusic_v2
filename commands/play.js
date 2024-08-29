@@ -1,13 +1,12 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { QueryType } = require('discord-player');
 const { EmbedBuilder, Colors } = require('discord.js');
+const locales = require('../locales.js');
+const { Readable } = require('stream');
+const ffmpeg = require('fluent-ffmpeg');
 const https = require('https');
 const http = require('http');
-const { Readable } = require('stream');
-const { getSettings, saveSettings } = require('../settingsManager');
-const { createQueue, getQueue, addTrackToQueue, updateCurrentTrack } = require('../queueManager');
-const locales = require('../locales.js');
-const { getEqualizerPresets } = require('../equalizer.js');
+const path = require('path');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,29 +17,28 @@ module.exports = {
         .setDescription('URLまたは検索ワード')
         .setRequired(false))
     .addAttachmentOption(option =>
-      option.setName('attachment')
-        .setDescription('音楽ファイルを添付')
+      option.setName('file')
+        .setDescription('音楽ファイル (mp3, wav, mp4, opus)')
         .setRequired(false)),
 
   async execute(interaction) {
-    const equalizerPresets = await getEqualizerPresets();
     const query = interaction.options.getString('query');
-    const attachment = interaction.options.getAttachment('attachment');
-    const lang = interaction.guild.preferredLocale || 'en';
-    const locale = locales[lang] || locales['en'];
+    const attachment = interaction.options.getAttachment('file');
 
     if (!query && !attachment) {
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.Red)
-            .setDescription('URL、検索ワード、または添付ファイルを指定してください。')
+            .setDescription('クエリまたは音楽ファイルが必要です。再試行してください。')
         ],
         ephemeral: true
       });
     }
 
     const channel = interaction.member.voice.channel;
+    const lang = interaction.guild.preferredLocale || 'en';
+    const locale = locales[lang] || locales['en'];
 
     if (!channel) {
       return interaction.reply({
@@ -53,173 +51,143 @@ module.exports = {
       });
     }
 
-    // サーバー設定を取得
-    let settings = await getSettings(interaction.guild.id);
-    if (!settings) {
-      settings = {
-        volume: 100, // デフォルトの音量
-        loopState: 'none', // デフォルトのループモード
-        equalizer: 'Default' // デフォルトのイコライザープリセット
-      };
-      await saveSettings(interaction.guild.id, settings);
-    }
+    const queue = interaction.client.player.nodes.create(interaction.guild, {
+      metadata: {
+        channel: interaction.channel
+      },
+      async onBeforeCreateStream(track, source, _queue) {
+        if (source === 'attachment') {
+          const supportedFormats = ['mp3', 'wav', 'mp4', 'opus'];
+          const fileExtension = path.extname(new URL(track.url).pathname).slice(1).toLowerCase();
 
-    let queue = interaction.client.player.nodes.get(interaction.guild.id);
-    const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
-    if (!queue) {
-      // 新しいキューを作成
-      queue = interaction.client.player.nodes.create(interaction.guild, {
-        metadata: {
-          channel: interaction.channel
-        },
-        async onBeforeCreateStream(track, source, _queue) {
-          try {
-            // YouTubeリンクの処理
-            const youtubeUrl = track.url;  
-            const encodedUrl = encodeURIComponent(youtubeUrl);
-            const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
-
-            function streamMusic(url) {
-              return new Promise((resolve, reject) => {
-                const protocol = url.startsWith('https') ? https : http;
-
-                protocol.get(url, (response) => {
-                  if (response.statusCode !== 200) {
-                    return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
-                  }
-
-                  const stream = new Readable({
-                    read() { }
-                  });
-
-                  response.on('data', (chunk) => {
-                    stream.push(chunk);
-                  });
-
-                  response.on('end', () => {
-                    stream.push(null); // 終了を示す
-                  });
-
-                  resolve(stream);
-                }).on('error', (err) => {
-                  reject(err);
-                });
-              });
-            }
-            if (attachment) return await streamMusic(track.url);
-            return await streamMusic(apiUrl);
-          } catch (error) {
-            console.error('Error fetching audio stream:', error);
-            throw error;
+          if (!supportedFormats.includes(fileExtension)) {
+            throw new Error('Unsupported file format. Supported formats: mp3, wav, mp4, opus.');
           }
-        }
-      });
 
-      try {
-        if (!queue.connection) await queue.connect(channel);
-      } catch {
-        queue.destroy();
+          const protocol = track.url.startsWith('https') ? https : http;
+
+          return new Promise((resolve, reject) => {
+            const request = protocol.get(track.url, (response) => {
+              if (response.statusCode !== 200) {
+                return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
+              }
+
+              if (fileExtension === 'opus') {
+                return resolve(response); // Opusの場合、そのままストリームを返す
+              }
+
+              // 他の形式の場合、ffmpegでopusに変換
+              const convertedStream = ffmpeg(response)
+                .inputFormat(fileExtension)
+                .toFormat('opus')
+                .audioCodec('libopus')
+                .on('error', (err) => {
+                  console.error('Error during conversion:', err);
+                  reject(err);
+                })
+                .pipe();
+                
+              resolve(convertedStream);
+            });
+
+            request.on('error', (err) => {
+              console.error('Error downloading file:', err);
+              reject(err);
+            });
+          });
+        } else if (source === 'youtube') {
+          const youtubeUrl = track.url;
+          const encodedUrl = encodeURIComponent(youtubeUrl);
+          const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
+          return await streamMusic(apiUrl);
+        }
+      }
+    });
+
+    if (attachment) {
+      const fileExtension = path.extname(new URL(attachment.url).pathname).slice(1).toLowerCase();
+
+      const supportedFormats = ['mp3', 'wav', 'mp4', 'opus'];
+      if (!supportedFormats.includes(fileExtension)) {
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setColor(Colors.Red)
-              .setDescription(`${locale.no_voice_channel} :x:`)
+              .setDescription('サポートされていないファイル形式です。サポートされている形式: mp3, wav, mp4, opus。')
           ],
           ephemeral: true
         });
       }
 
-      // ループ設定を反映
-      let loopMode;
-      if (settings.loopState === 'none') loopMode = 0;
-      else if (settings.loopState === 'loop') loopMode = 1;
-      else if (settings.loopState === 'queueloop') loopMode = 2;
-      queue.setRepeatMode(loopMode);
-
-    } else {
-      // 既存のキューがある場合はボイスチャンネルに接続されているか確認
-      if (!queue.connection) {
-        try {
-          await queue.connect(channel);
-        } catch {
-          queue.destroy();
-          return interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(Colors.Red)
-                .setDescription(`${locale.no_voice_channel} :x:`)
-            ],
-            ephemeral: true
-          });
-        }
-      }
-    }
-
-    let result;
-
-    if (attachment) {
-      // 添付ファイルの処理
-      result = {
-        tracks: [{
-          title: attachment.name,
-          url: attachment.url,
-          requestedBy: interaction.user
-        }]
+      if (!queue.connection) await queue.connect(channel);
+      const track = {
+        title: attachment.name,
+        url: attachment.url,
+        requestedBy: interaction.user,
+        source: 'attachment'
       };
-    } else {
-      // 検索クエリまたはURLの処理
-      result = await interaction.client.player.search(query, {
+      queue.addTrack(track);
+      await queue.node.play();
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(Colors.Green)
+            .setDescription(`${locale.play.replace('{track}', attachment.name)} :musical_note:`)
+        ]
+      });
+    } else if (query) {
+      // URLまたは検索ワードでの再生処理
+      const result = await interaction.client.player.search(query, {
         requestedBy: interaction.user,
         searchEngine: QueryType.YOUTUBE_SEARCH
       });
-    }
 
-    if (!result || result.tracks.length === 0) {
-      return interaction.reply({
+      if (result.tracks.length === 0) {
+        return interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(Colors.Red)
+              .setDescription(`${locale.no_search_result} :x:`)
+          ],
+          ephemeral: true
+        });
+      }
+
+      const track = result.tracks[0];
+      queue.addTrack(track);
+      if (!queue.connection) await queue.connect(channel);
+      await queue.node.play();
+
+      await interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setColor(Colors.Red)
-            .setDescription(`${locale.no_search_result} :x:`)
-        ],
-        ephemeral: true
+            .setColor(Colors.Green)
+            .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
+        ]
       });
     }
 
-    const track = result.tracks[0];
-    const trackId = await addTrackToQueue(queueId, track); // トラックをデータベースに保存
-
-    queue.addTrack(track);
-    
-    // サーバー設定をキューに適用
-    queue.node.setVolume(settings.volume);
-
-    if (!queue.node.isPlaying()) {
-      await updateCurrentTrack(queueId, trackId); // 現在のトラックを更新
-      await queue.node.play();
+    async function streamMusic(url) {
+      return new Promise((resolve, reject) => {
+        const protocol = url.startsWith('https') ? https : http;
+        protocol.get(url, (response) => {
+          if (response.statusCode !== 200) {
+            return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
+          }
+          const stream = new Readable({
+            read() {}
+          });
+          response.on('data', (chunk) => {
+            stream.push(chunk);
+          });
+          response.on('end', () => {
+            stream.push(null);
+          });
+          resolve(stream);
+        }).on('error', (err) => {
+          reject(err);
+        });
+      });
     }
-
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(Colors.Green)
-          .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
-      ]
-    }).then(msg => {
-      setTimeout(async () => {
-        interaction.reply = interaction.followUp;
-        await interaction.client.commands.get('nowplaying').execute(interaction);
-      }, 1000);
-    });
-
-    // サーバー設定をキューに適用
-    queue.node.setVolume(settings.volume);
-    //queue.filters.equalizer.setEQ(equalizerPresets[settings.equalizer]);
-
-    // 再生後の設定を保存
-    await saveSettings(interaction.guild.id, {
-      volume: queue.node.volume,
-      loopState: settings.loopState,
-      equalizer: settings.equalizer
-    });
   }
 };
