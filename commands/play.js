@@ -77,16 +77,23 @@ module.exports = {
               }
 
               // 他の形式の場合、ffmpegでopusに変換
-              const convertedStream = ffmpeg(response)
+              const convertedStream = ffmpeg()
+                .input(response)
                 .inputFormat(fileExtension)
                 .toFormat('opus')
                 .audioCodec('libopus')
+                .on('start', (commandLine) => {
+                  console.log('Spawned Ffmpeg with command: ' + commandLine);
+                })
                 .on('error', (err) => {
-                  console.error('Error during conversion:', err);
+                  console.error('Error during conversion:', err.message);
                   reject(err);
                 })
+                .on('end', () => {
+                  console.log('Conversion finished!');
+                })
                 .pipe();
-                
+
               resolve(convertedStream);
             });
 
