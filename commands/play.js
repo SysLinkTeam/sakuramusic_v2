@@ -18,7 +18,7 @@ module.exports = {
         .setRequired(false))
     .addAttachmentOption(option =>
       option.setName('file')
-        .setDescription('音楽ファイル (mp3, wav, mp4, opus)')
+        .setDescription('音楽ファイル (mp3, wav, m4a, flac, opus)')
         .setRequired(false)),
 
   async execute(interaction) {
@@ -57,11 +57,11 @@ module.exports = {
       },
       async onBeforeCreateStream(track, source, _queue) {
         if (source === 'attachment') {
-          const supportedFormats = ['mp3', 'wav', 'mp4', 'opus'];
+          const supportedFormats = ['mp3', 'wav', 'm4a', 'flac', 'opus'];
           const fileExtension = path.extname(new URL(track.url).pathname).slice(1).toLowerCase();
 
           if (!supportedFormats.includes(fileExtension)) {
-            throw new Error('Unsupported file format. Supported formats: mp3, wav, mp4, opus.');
+            throw new Error('Unsupported file format. Supported formats: mp3, wav, m4a, flac, opus.');
           }
 
           const protocol = track.url.startsWith('https') ? https : http;
@@ -114,13 +114,13 @@ module.exports = {
     if (attachment) {
       const fileExtension = path.extname(new URL(attachment.url).pathname).slice(1).toLowerCase();
 
-      const supportedFormats = ['mp3', 'wav', 'mp4', 'opus'];
+      const supportedFormats = ['mp3', 'wav', 'm4a', 'flac', 'opus'];
       if (!supportedFormats.includes(fileExtension)) {
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setColor(Colors.Red)
-              .setDescription('サポートされていないファイル形式です。サポートされている形式: mp3, wav, mp4, opus。')
+              .setDescription('サポートされていないファイル形式です。サポートされている形式: mp3, wav, m4a, flac, opus。')
           ],
           ephemeral: true
         });
