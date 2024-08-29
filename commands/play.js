@@ -134,6 +134,18 @@ module.exports = {
         source: 'attachment'
       };
       queue.addTrack(track);
+
+      if (queue.node.isPlaying()) {
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(Colors.Green)
+              .setDescription(`${locale.added_to_queue.replace('{track}', attachment.name)} :musical_note:`)
+          ]
+        });
+        return;
+      }
+
       await queue.node.play();
       await interaction.reply({
         embeds: [
@@ -163,6 +175,16 @@ module.exports = {
       const track = result.tracks[0];
       queue.addTrack(track);
       if (!queue.connection) await queue.connect(channel);
+      if (queue.node.isPlaying()) {
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(Colors.Green)
+              .setDescription(`${locale.added_to_queue.replace('{track}', attachment.name)} :musical_note:`)
+          ]
+        });
+        return;
+      }
       await queue.node.play();
 
       await interaction.reply({
@@ -182,7 +204,7 @@ module.exports = {
             return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
           }
           const stream = new Readable({
-            read() {}
+            read() { }
           });
           response.on('data', (chunk) => {
             stream.push(chunk);
