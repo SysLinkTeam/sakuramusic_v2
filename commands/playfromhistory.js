@@ -64,7 +64,7 @@ module.exports = {
 
     const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
     const track = results[index - 1];
-    if(track.startsWith("https://cdn.discordapp.com/") || track.startsWith("https://cdn.discord.com/")) return interaction.reply({
+    if(track.url.startsWith("https://cdn.discordapp.com/") || track.url.startsWith("https://cdn.discord.com/")) return interaction.reply({
       embeds: [
         new EmbedBuilder()
           .setColor(Colors.Red)
