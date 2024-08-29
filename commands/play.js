@@ -208,7 +208,7 @@ module.exports = {
 
       //nowplayingコマンドを実行
       const nowPlayingCommand = interaction.client.commands.get('nowplaying');
-      intaraction.reply = interaction.followUp;
+      interaction.reply = interaction.followUp;
       await nowPlayingCommand.execute(interaction);
 
     }
