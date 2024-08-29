@@ -64,6 +64,14 @@ module.exports = {
 
     const queueId = await getQueue(interaction.guild.id) ?? await createQueue(interaction.guild.id);
     const track = results[index - 1];
+    if(track.startsWith("https://cdn.discordapp.com/") || track.startsWith("https://cdn.discord.com/")) retuen interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(Colors.Red)
+          .setDescription('discord APIの制約によりこのファイルは再生できません。')
+      ],
+      ephemeral: true
+    });
     let queue = interaction.client.player.nodes.get(interaction.guild.id);
     if (!queue) {
       // キューが存在しない場合は新規作成
