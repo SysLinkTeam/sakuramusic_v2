@@ -133,9 +133,19 @@ module.exports = {
         requestedBy: interaction.user,
         source: 'attachment'
       };
-      queue.addTrack(track);
-
+      
       if (queue.node.isPlaying()) {
+        //添付ファイルはDiscordAPIの制約上キューへの追加ができない
+        intaraction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(Colors.Red)
+              .setTitle('Error')
+              .setDescription('添付ファイルはDiscordAPIの制約上キューへの追加ができません。stopコマンドを実行して再生を停止してください。')
+          ]
+        })
+
+        return;
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
@@ -145,6 +155,7 @@ module.exports = {
         });
         return;
       }
+      queue.addTrack(track);
 
       await queue.node.play();
       await interaction.reply({
