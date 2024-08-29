@@ -136,7 +136,7 @@ module.exports = {
       
       if (queue.node.isPlaying()) {
         //添付ファイルはDiscordAPIの制約上キューへの追加ができない
-        intaraction.reply({
+        interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setColor(Colors.Red)
