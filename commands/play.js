@@ -194,6 +194,12 @@ module.exports = {
             .setDescription(`${locale.play.replace('{track}', track.title)} :musical_note:`)
         ]
       });
+
+      //nowplayingコマンドを実行
+      const nowPlayingCommand = interaction.client.commands.get('nowplaying');
+      intaraction.reply = interaction.followUp;
+      await nowPlayingCommand.execute(interaction);
+
     }
 
     async function streamMusic(url) {
