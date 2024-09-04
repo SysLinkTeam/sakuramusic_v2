@@ -12,7 +12,8 @@ function censor(censor) {
         if (i >= 29) 
             return '[Unknown]';
 
-        ++i;        return value;
+        ++i;        
+        return value;
     }
 }
 

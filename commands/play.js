@@ -144,15 +144,6 @@ module.exports = {
               .setDescription('添付ファイルはDiscordAPIの制約上キューへの追加ができません。stopコマンドを実行して再生を停止してください。')
           ]
         })
-
-        return;
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(Colors.Green)
-              .setDescription(`${locale.added_to_queue.replace('{track}', attachment.name)} :musical_note:`)
-          ]
-        });
         return;
       }
       queue.addTrack(track);
@@ -229,7 +220,9 @@ module.exports = {
           response.on('end', () => {
             stream.push(null);
           });
+          response.once('data', (chunk) => {
           resolve(stream);
+          })
         }).on('error', (err) => {
           reject(err);
         });
