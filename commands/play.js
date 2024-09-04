@@ -228,6 +228,6 @@ module.exports = {
           reject(err);
         });
       });
-    }z
+    }
   }
 };
