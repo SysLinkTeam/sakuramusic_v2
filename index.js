@@ -200,6 +200,7 @@ client.player.events.on('queueDelete', async (queue) => {
 
 client.player.events.on('error', async (queue, error) => {
   const serverId = queue.guild.id;
+  console.error(error);
 
   logAction(serverId, 'system', null, 'player_error', { error: error.stack });
 });
