@@ -213,7 +213,7 @@ module.exports = {
             return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
           }
           //download file to temp folder. if not exists, create it
-          const tempDir = path.join(__dirname, '../temp');
+          const tempDir = path.join(__dirname, './temp');
           if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir);
           }
