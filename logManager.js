@@ -40,7 +40,7 @@ async function logAction(guildId, userId, commandName, actionType, details) {
 
     const query = `
     INSERT INTO bot_logs (guild_id, user_id, command_name, action_type, action_details)
-    VALUES (?, ?, ?, ?, ?, NOW())
+    VALUES (?, ?, ?, ?, NOW())
   `;
     const params = [guildId, userId, commandName, actionType, JSON.stringify(details, CircularCheckAndReplaceBigIntToString)];
 
