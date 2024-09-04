@@ -104,7 +104,7 @@ module.exports = {
               reject(err);
             });
           });
-        } else if (source === 'youtube') {
+        } else if (source === 'youtube' || source === 'youtubeSearch') {
           const youtubeUrl = track.url;
           const encodedUrl = encodeURIComponent(youtubeUrl);
           const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
@@ -213,18 +213,16 @@ module.exports = {
           if (response.statusCode !== 200) {
             return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
           }
-          //download file to temp folder. if not exists, create it
-          const tempDir = path.join(__dirname, './temp');
-          if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir);
-          }
-          const tempPath = path.join(tempDir, `temp_${Date.now()}.opus`);
-          const fileStream = fs.createWriteStream(tempPath);
-          response.pipe(fileStream);
-          fileStream.on('finish', () => {
-            fileStream.close();
-            resolve(fs.createReadStream(tempPath));
-          })
+          const stream = new Readable({
+            read() { }
+          });
+          response.on('data', (chunk) => {
+            stream.push(chunk);
+          });
+          response.on('end', () => {
+            stream.push(null);
+          });
+          resolve(stream);
         }).on('error', (err) => {
           reject(err);
         });
