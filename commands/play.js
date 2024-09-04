@@ -57,6 +57,7 @@ module.exports = {
         channel: interaction.channel
       },
       async onBeforeCreateStream(track, source, _queue) {
+        console.log('onBeforeCreateStream', track, source);
         if (source === 'attachment') {
           const supportedFormats = ['mp3', 'wav', 'm4a', 'flac', 'opus'];
           const fileExtension = path.extname(new URL(track.url).pathname).slice(1).toLowerCase();
