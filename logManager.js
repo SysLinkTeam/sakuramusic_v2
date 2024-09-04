@@ -1,22 +1,20 @@
 const db = require('./database');
 
-function censor(censor) {
-    var i = 0;
-
-    return function (key, value) {
-        if (typeof value === 'bigint') return value.toString();      
-
-        if (i !== 0 && typeof (censor) === 'object' && typeof (value) == 'object' && censor == value)
-            return '[Circular]';
-
-        if (i >= 29) 
-            return '[Unknown]';
-
-        ++i;        
+function CircularCheckAndReplaceBigIntToString( key, value ) {
+    const seen = new WeakSet();
+    return function censor(key, value) {
+        if (typeof value === 'bigint') {
+            return value.toString();
+        }
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return '[Circular]';
+            }
+            seen.add(value);
+        }
         return value;
-    }
+    };
 }
-
 // action_typeがデータベースに存在するか確認し、存在しない場合は追加する
 async function ensureActionTypeExists(actionType) {
     const querySelect = 'SELECT id FROM action_types WHERE value = ?';
@@ -44,7 +42,7 @@ async function logAction(guildId, userId, commandName, actionType, details) {
     INSERT INTO bot_logs (guild_id, user_id, command_name, action_type, action_details, timestamp)
     VALUES (?, ?, ?, ?, ?, NOW())
   `;
-    const params = [guildId, userId, commandName, actionType, JSON.stringify(details, censor(details))];
+    const params = [guildId, userId, commandName, actionType, JSON.stringify(details, CircularCheckAndReplaceBigIntToString)];
 
     try {
         await db.queryWithoutLogging(query, params);
