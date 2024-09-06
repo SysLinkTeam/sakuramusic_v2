@@ -140,7 +140,7 @@ module.exports = {
       else if (mode === 'loop') modeValue = 1;
       else if (mode === 'queueloop') modeValue = 2;
 
-      settings.loopState = mode;
+      settings.loopState = modeValue;
       await saveSettings(guildId, settings);
 
       // プレイヤーに即座に反映
