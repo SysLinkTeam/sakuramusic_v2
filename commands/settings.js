@@ -81,7 +81,7 @@ module.exports = {
     if (!settings) {
       settings = {
         volume: 50, // デフォルトの音量
-        loopState: 'noloop', // デフォルトのループモード
+        loopState: 'none', // デフォルトのループモード
         equalizer: 'Default' // デフォルトのイコライザープリセット
       };
       await saveSettings(guildId, settings);
