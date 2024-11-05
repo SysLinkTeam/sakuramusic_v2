@@ -96,7 +96,7 @@ module.exports = {
         .setTitle('サーバーの設定')
         .addFields(
           { name: '音量', value: `${settings.volume}%`, inline: true },
-          { name: 'ループモード', value: settings.loopState, inline: true },
+          { name: 'ループモード', value: settings.loopState || 'none', inline: true },
           { name: 'イコライザー', value: settings.equalizer || 'Default', inline: true }
         );
 
