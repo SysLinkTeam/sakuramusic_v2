@@ -221,5 +221,6 @@ module.exports = {
             reject(new Error(`Failed to fetch URL: ${err.message}`));
         });
     });
-}
+    }
+  }
 
