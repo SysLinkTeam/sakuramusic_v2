@@ -206,26 +206,20 @@ module.exports = {
     }
 
     async function streamMusic(url) {
-      return new Promise((resolve, reject) => {
-        const protocol = url.startsWith('https') ? https : http;
-        protocol.get(url, (response) => {
-          if (response.statusCode !== 200) {
-            return reject(new Error(`Failed to get file, status code: ${response.statusCode}`));
-          }
-          const stream = new Readable({
-            read() { }
-          });
-          response.on('data', (chunk) => {
-            stream.push(chunk);
-          });
-          response.on('end', () => {
-            stream.push(null);
-          });
-          resolve(stream);
+    return new Promise((resolve, reject) => {
+        https.get(url, (response) => {
+            if (response.statusCode !== 200) {
+                reject(new Error(`Failed to fetch URL. Status Code: ${response.statusCode}`));
+                response.destroy();
+                return;
+            }
+
+            const stream = new PassThrough();
+            response.pipe(stream);
+            resolve(stream);
         }).on('error', (err) => {
-          reject(err);
+            reject(new Error(`Failed to fetch URL: ${err.message}`));
         });
-      });
-    }
-  }
+    });
+}
 };
