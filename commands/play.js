@@ -104,7 +104,7 @@ module.exports = {
               reject(err);
             });
           });
-        } else if (source === 'youtube' || source === 'youtubeSearch') {
+        } else if (source.startsWith('youtube')) {
           const youtubeUrl = track.url;
           const encodedUrl = encodeURIComponent(youtubeUrl);
           const apiUrl = `https://downloader.sprink.cloud/api/download/audio/opus?url=${encodedUrl}`;
