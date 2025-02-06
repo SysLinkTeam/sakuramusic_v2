@@ -4,7 +4,7 @@ const db = require('./database');
 async function saveSettings(guildId, settings) {
     await db.query(
         `INSERT INTO settings (guild_id, volume, loop_state, equalizer) 
-         VALUES (?, ?, '?', ?) 
+         VALUES (?, ?, ?, ?) 
          ON DUPLICATE KEY UPDATE 
          volume = VALUES(volume), 
          loop_state = VALUES(loop_state), 
