@@ -136,12 +136,11 @@ module.exports = {
       const mode = interaction.options.getString('mode');
       let modeValue;
 
-      if (mode === 'noloop') modeValue = 0;
-      else if (mode === 'loop') modeValue = 1;
-      else if (mode === 'queueloop') modeValue = 2;
+      if (mode === 'noloop') modeValue = "0";
+      else if (mode === 'loop') modeValue = "1";
+      else if (mode === 'queueloop') modeValue = "2";
 
       settings.loopState = modeValue;
-      modeValue = modeValue.toString();
       await saveSettings(guildId, settings);
 
       // プレイヤーに即座に反映
