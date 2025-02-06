@@ -136,7 +136,7 @@ module.exports = {
       const mode = interaction.options.getString('mode');
       let modeValue;
 
-      if (mode === 'noloop') modeValue = "none";
+      if (mode === 'noloop') modeValue = "off";
       else if (mode === 'loop') modeValue = "track";
       else if (mode === 'queueloop') modeValue = "queue";
 
