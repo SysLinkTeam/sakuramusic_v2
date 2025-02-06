@@ -136,9 +136,9 @@ module.exports = {
       const mode = interaction.options.getString('mode');
       let modeValue;
 
-      if (mode === 'noloop') modeValue = "off";
-      else if (mode === 'loop') modeValue = "track";
-      else if (mode === 'queueloop') modeValue = "queue";
+      if (mode === 'noloop') modeValue = 0;
+      else if (mode === 'loop') modeValue = 1;
+      else if (mode === 'queueloop') modeValue = 2;
 
       settings.loopState = modeValue;
       await saveSettings(guildId, settings);
