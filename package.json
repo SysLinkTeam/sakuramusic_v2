@@ -1,15 +1,14 @@
 {
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
-    "@discordjs/voice": "^0.16.0",
-    "discord.js": "^14.11.0",
+    "@discordjs/voice": "^0.19.0",
+    "discord.js": "^14.22.1",
     "dotenv": "^16.3.1",
     "ffmpeg-static": "^5.1.0",
     "follow-redirects": "^1.15.2",
     "libsodium-wrappers": "^0.7.11",
     "node-cron": "^3.0.2",
     "play-dl": "^1.9.6",
-    "sodium": "^3.0.2",
     "yt-dlp-wrap": "^2.3.11",
     "ytdl-core": "^4.11.4",
     "ytpl": "^2.3.0"
