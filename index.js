@@ -1,6 +1,6 @@
 try {
     var { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
-    var { joinVoiceChannel, createAudioResource, playAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection, VoiceConnection, AudioPlayer, AudioResource } = require('@discordjs/voice');
+    var { joinVoiceChannel, createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
     var ytdl = require('ytdl-core');
     var ytpl = require('ytpl');
     var playdl = require("play-dl")
