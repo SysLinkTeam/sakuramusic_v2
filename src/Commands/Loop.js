@@ -6,6 +6,14 @@ class Loop extends BaseCommand {
         super({
             name: 'loop',
             description: 'Loop the song',
+            name_localizations: {
+                ja: 'ループ',
+                ko: '루프',
+            },
+            description_localizations: {
+                ja: '曲をループ',
+                ko: '곡을 반복 재생',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

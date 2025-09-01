@@ -6,6 +6,14 @@ class Queue extends BaseCommand {
         super({
             name: 'queue',
             description: 'Show the queue',
+            name_localizations: {
+                ja: 'キュー',
+                ko: '큐',
+            },
+            description_localizations: {
+                ja: 'キューを表示',
+                ko: '큐 표시',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

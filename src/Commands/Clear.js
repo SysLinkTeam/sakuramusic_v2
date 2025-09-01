@@ -6,6 +6,14 @@ class Clear extends BaseCommand {
         super({
             name: 'clear',
             description: 'Clear the queue',
+            name_localizations: {
+                ja: 'クリア',
+                ko: '초기화',
+            },
+            description_localizations: {
+                ja: 'キューをクリア',
+                ko: '큐를 비웁니다',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

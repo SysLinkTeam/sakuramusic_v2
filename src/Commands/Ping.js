@@ -6,6 +6,14 @@ class Ping extends BaseCommand {
         super({
             name: 'ping',
             description: 'Show the ping',
+            name_localizations: {
+                ja: 'ピング',
+                ko: '핑',
+            },
+            description_localizations: {
+                ja: 'pingを表示',
+                ko: '핑 표시',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

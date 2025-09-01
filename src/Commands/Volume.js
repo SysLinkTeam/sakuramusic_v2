@@ -6,11 +6,27 @@ class Volume extends BaseCommand {
         super({
             name: 'volume',
             description: 'Change the volume',
+            name_localizations: {
+                ja: 'ボリューム',
+                ko: '볼륨',
+            },
+            description_localizations: {
+                ja: '音量を変更',
+                ko: '볼륨을 변경',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'volume',
                     description: 'Volume',
+                    name_localizations: {
+                        ja: '音量',
+                        ko: '볼륨',
+                    },
+                    description_localizations: {
+                        ja: '音量',
+                        ko: '볼륨',
+                    },
                     type: ApplicationCommandOptionType.String,
                     required: true,
                 },

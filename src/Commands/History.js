@@ -6,11 +6,27 @@ class History extends BaseCommand {
         super({
             name: 'history',
             description: 'Show playback history or replay a song',
+            name_localizations: {
+                ja: '履歴',
+                ko: '히스토리',
+            },
+            description_localizations: {
+                ja: '再生履歴を表示または再生',
+                ko: '재생 기록을 표시하거나 재생',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'index',
                     description: 'History entry to play',
+                    name_localizations: {
+                        ja: '番号',
+                        ko: '번호',
+                    },
+                    description_localizations: {
+                        ja: '再生する履歴項目',
+                        ko: '재생할 기록 항목',
+                    },
                     type: ApplicationCommandOptionType.Integer,
                     required: false
                 }

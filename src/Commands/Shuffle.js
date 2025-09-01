@@ -6,6 +6,14 @@ class Shuffle extends BaseCommand {
         super({
             name: 'shuffle',
             description: 'Shuffle the queue',
+            name_localizations: {
+                ja: 'シャッフル',
+                ko: '셔플',
+            },
+            description_localizations: {
+                ja: 'キューをシャッフル',
+                ko: '큐를 섞기',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

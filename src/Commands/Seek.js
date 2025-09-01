@@ -7,11 +7,27 @@ class Seek extends BaseCommand {
         super({
             name: 'seek',
             description: 'Seek to the given time in the current song',
+            name_localizations: {
+                ja: 'シーク',
+                ko: '탐색',
+            },
+            description_localizations: {
+                ja: '現在の曲の指定した時間に移動',
+                ko: '현재 곡의 지정된 시간으로 이동',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'position',
                     description: 'Time (seconds or mm:ss)',
+                    name_localizations: {
+                        ja: '時間',
+                        ko: '시간',
+                    },
+                    description_localizations: {
+                        ja: '時間 (秒または mm:ss)',
+                        ko: '시간 (초 또는 mm:ss)',
+                    },
                     type: ApplicationCommandOptionType.String,
                     required: true,
                 },
