@@ -20,13 +20,16 @@
 ・キューのクリア  
 ・現在再生中の曲に関する情報の表示  
 ・曲の存在確認  
-・音量調節  
-・pingの確認  
-・曲指定スキップ  
+・音量調節
+・再生位置の変更(シーク)
+・pingの確認
+・曲指定スキップ
 ・曲指定スキップの際にもしキューループが有効な場合はスキップした曲をキューの末尾に追加する
-・キューのシャッフル  
+・キューのシャッフル
+・添付ファイルからの再生(リンクは2時間で無効)
+・再生履歴の表示と履歴からの再生
 ・プレイリストのサポート(v1.1.0以降から正式サポート)
-・youtube APIを使用しない曲の検索機能(v1.2.0以降から正式サポート)  
+・youtube APIを使用しない曲の検索機能(v1.2.0以降から正式サポート)
 ・VCに参加している人が0人になったら自動で退出(v1.2.0以降から正式サポート)  
 ・一度取得したデータを保持しておくことで再取得の手間をなくしネットワーク負荷の軽減と再生までの時間を高速化(v1.3.0以降から正式サポート)  
 ・メモリがひっ迫した際に自動でキャッシュをクリア(v1.3.0以降から正式サポート)   
@@ -73,13 +76,16 @@ The bot called SakuraMusic described in [article](https://qiita.com/_yussy_/item
 ・Clear queue  
 ・Display information about the currently playing song  
 ・Confirming the existence of a song  
-・Volume control  
-・Ping confirmation  
-・Skip to a specific song  
-・If a queue loop is enabled when a song is skipped, the skipped song will be added to the end of the queue.  
-・Shuffle queue  
-・playlist support(officially supported since v1.2.0)  
-・Search function for songs without using youtube API (officially supported since v1.2.0)  
+・Volume control
+・Seek within the current track
+・Ping confirmation
+・Skip to a specific song
+・If a queue loop is enabled when a song is skipped, the skipped song will be added to the end of the queue.
+・Shuffle queue
+・Play from audio attachments (links expire after 2 hours)
+・View playback history and replay songs from it
+・playlist support(officially supported since v1.2.0)
+・Search function for songs without using youtube API (officially supported since v1.2.0)
 ・Automatic exit from VC when the number of participants reaches zero (officially supported since v1.2.0)  
 ・Retain data once acquired to reduce network load and speed up playback time (officially supported since v1.3.0)  
 ・Automatic cache clearing when memory is overloaded (officially supported since v1.3.0)  
