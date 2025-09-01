@@ -131,9 +131,13 @@ class Play extends BaseCommand {
 
         let song;
         if (!musicInfoCache.has(musiclist[0])) {
-            const songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {});
+            const songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
+                console.error(error);
+                await interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                return null;
+            });
             if (!songInfo) {
-                return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                return;
             }
             song = new Song({
                 title: songInfo.videoDetails.title,

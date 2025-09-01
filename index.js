@@ -12,24 +12,22 @@ try {
     var path = require('path');
     var { https } = require('follow-redirects');
     var  stream  = require('stream');
-    var ytdl = require('ytdl-core');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
     }
     console.log("Installing dependencies...")
     const { execSync } = require('child_process');
-    execSync('npm install', (err, stdout, stderr) => {
-        if (err) {
-            console.log("Failed to install dependencies.")
-            console.log(err);
-            return;
-        }
-        console.log(stdout);
-        console.log("Dependencies installed. restarting...")
-        require('child_process').execSync('node index.js', { stdio: [0, 1, 2] });
+    try {
+        execSync('npm install', { stdio: 'inherit' });
+        console.log("Dependencies installed. restarting...");
+        require('child_process').execSync('node index.js', { stdio: 'inherit' });
         process.exit();
-    });
+    } catch (err) {
+        console.log("Failed to install dependencies.");
+        console.error(err);
+        process.exit(1);
+    }
 
 }
 const MusicQueue = require('./src/MusicQueue');
@@ -200,8 +198,16 @@ let ramUsageReportEnabled = false;
         }
     })())();
 
-    process.on('uncaughtException', async function (err) {
-        console.error(err);
+    process.on('uncaughtException', err => {
+        console.error('Uncaught Exception:', err);
+        if (client && client.destroy) {
+            try {
+                client.destroy();
+            } catch (e) {
+                console.error('Failed to destroy client:', e);
+            }
+        }
+        process.exit(1);
     });
 
     client.once('ready', async () => {
@@ -267,7 +273,7 @@ let ramUsageReportEnabled = false;
 
     client.on('voiceStateUpdate', async (oldState, newState) => {
         if (!oldState.member.user.bot && oldState.channelId != null && newState.channelId === null && oldState.channel.members.size === 1) {
-            serverQueue = queue.get(oldState.guild.id);
+            const serverQueue = queue.get(oldState.guild.id);
             if (!serverQueue) return;
             serverQueue.songs = [];
             serverQueue.autoPlay = false;
@@ -279,13 +285,13 @@ let ramUsageReportEnabled = false;
 
 
     async function play(guild, song, interaction = null, songcache = null) {
-        serverQueue = queue.get(guild.id);
+        const serverQueue = queue.get(guild.id);
         if (!serverQueue) return;
 
         if (!song) {
             if (serverQueue.autoPlay === true) {
                 serverQueue.textChannel.send('Auto play is enabled, so I will search next song for you!');
-                title = songcache.title.slice(0, songcache.title.length / 2);
+                const title = songcache.title.slice(0, songcache.title.length / 2);
                 let yt_info = await playdl.search(title, {
                     limit: 10
                 })
@@ -297,7 +303,7 @@ let ramUsageReportEnabled = false;
                         queue.delete(guild.id);
                         return;
                     }
-                    songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
+                    let songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
                         if (error) {
                             console.log(error);
                             serverQueue.textChannel.send('I find the next song, but I cannot play it, so I will stop playing music.\nPlease try again later.');
@@ -342,12 +348,13 @@ let ramUsageReportEnabled = false;
         }
 
         let stream_ytdl;
-        player = createAudioPlayer({
+        const player = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Stop,
             },
         });
 
+        let resource;
         if (song.type === 'attachment') {
             const streamAttachment = await new Promise((resolve, reject) => {
                 https.get(song.url, res => resolve(res)).on('error', reject);
@@ -369,7 +376,7 @@ let ramUsageReportEnabled = false;
         serverQueue.connection.subscribe(player);
 
         player.on(AudioPlayerStatus.Idle, () => {
-            serverQueue = queue.get(guild.id);
+            const serverQueue = queue.get(guild.id);
             if (serverQueue.loop === false) {
                 if (serverQueue.queueloop === true) {
                     serverQueue.songs.push(serverQueue.songs[0]);
@@ -382,7 +389,7 @@ let ramUsageReportEnabled = false;
         }).on('error', error => {
             console.error(error)
         });
-        embed = {
+        const embed = {
             "title": "Now Playing...♬",
             "description": `[${song.title}](${song.url})`,
             "color": Math.floor(Math.random() * 16777214) + 1,
@@ -482,7 +489,7 @@ let ramUsageReportEnabled = false;
             data[i].autoPlay = value.autoPlay;
             data[i].autoPlayPosition = value.autoPlayPosition;
             data[i].paused = value.paused;
-            data[i].volume = value.resource.volume.volume;
+            data[i].volume = value.resource && value.resource.volume ? value.resource.volume.volume : 0.2;
             i++;
         });
         return data;

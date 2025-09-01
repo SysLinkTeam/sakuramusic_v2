@@ -59,20 +59,32 @@ class MusicQueue {
 
   async seek(seconds) {
     if (!this.player || this.songs.length === 0) return;
+    if (seconds < 0 || (this.songs[0] && seconds > this.songs[0].totalsec)) {
+      this.textChannel.send('Please enter a time within the length of the song!');
+      return;
+    }
     this.player.stop();
-    const stream = ytdl(this.songs[0].url, {
-      filter: 'audioonly',
-      quality: 'highestaudio',
-      highWaterMark: 1 << 25,
-      begin: seconds * 1000,
-    });
-    const resource = createAudioResource(stream, { inlineVolume: true });
-    const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : 0.2;
-    resource.volume.setVolume(currentVolume);
-    this.resource = resource;
-    this.player.play(resource);
-    this.starttimestamp = Date.now() - seconds * 1000;
-    this.paused = false;
+    try {
+      const stream = ytdl(this.songs[0].url, {
+        filter: 'audioonly',
+        quality: 'highestaudio',
+        highWaterMark: 1 << 25,
+        begin: seconds * 1000,
+      }).on('error', err => {
+        console.error(err);
+        this.textChannel.send('Failed to seek.');
+      });
+      const resource = createAudioResource(stream, { inlineVolume: true });
+      const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : 0.2;
+      resource.volume.setVolume(currentVolume);
+      this.resource = resource;
+      this.player.play(resource);
+      this.starttimestamp = Date.now() - seconds * 1000;
+      this.paused = false;
+    } catch (err) {
+      console.error(err);
+      this.textChannel.send('Failed to seek.');
+    }
   }
 }
 
