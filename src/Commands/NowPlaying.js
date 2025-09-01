@@ -7,6 +7,14 @@ class NowPlaying extends BaseCommand {
         super({
             name: 'nowplaying',
             description: 'Show the song you are playing',
+            name_localizations: {
+                ja: '再生中',
+                ko: '현재재생중',
+            },
+            description_localizations: {
+                ja: '再生中の曲を表示',
+                ko: '재생 중인 곡 표시',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

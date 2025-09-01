@@ -6,6 +6,14 @@ class Invite extends BaseCommand {
         super({
             name: 'invite',
             description: 'Invite SakuraMusicV2 to your server',
+            name_localizations: {
+                ja: '招待',
+                ko: '초대',
+            },
+            description_localizations: {
+                ja: 'SakuraMusicV2をサーバーに招待',
+                ko: '서버에 SakuraMusicV2 초대',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

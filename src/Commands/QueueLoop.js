@@ -6,6 +6,14 @@ class QueueLoop extends BaseCommand {
         super({
             name: 'queueloop',
             description: 'Loop the queue',
+            name_localizations: {
+                ja: 'キューループ',
+                ko: '큐루프',
+            },
+            description_localizations: {
+                ja: 'キューをループ',
+                ko: '큐를 반복 재생',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

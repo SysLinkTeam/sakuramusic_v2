@@ -6,11 +6,27 @@ class Remove extends BaseCommand {
         super({
             name: 'remove',
             description: 'Remove the song from the queue',
+            name_localizations: {
+                ja: '削除',
+                ko: '제거',
+            },
+            description_localizations: {
+                ja: 'キューから曲を削除',
+                ko: '큐에서 곡을 제거',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'songnumber',
                     description: 'Index',
+                    name_localizations: {
+                        ja: '曲番号',
+                        ko: '곡번호',
+                    },
+                    description_localizations: {
+                        ja: '番号',
+                        ko: '인덱스',
+                    },
                     type: ApplicationCommandOptionType.String,
                     required: true,
                 },

@@ -6,11 +6,27 @@ class SkipTo extends BaseCommand {
         super({
             name: 'skipto',
             description: 'Skip to the song',
+            name_localizations: {
+                ja: '曲指定スキップ',
+                ko: '특정곡건너뛰기',
+            },
+            description_localizations: {
+                ja: '指定した曲にスキップ',
+                ko: '해당 곡으로 건너뛰기',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'songnumber',
                     description: 'Index',
+                    name_localizations: {
+                        ja: '曲番号',
+                        ko: '곡번호',
+                    },
+                    description_localizations: {
+                        ja: '番号',
+                        ko: '인덱스',
+                    },
                     type: ApplicationCommandOptionType.String,
                     required: true,
                 },

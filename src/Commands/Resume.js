@@ -6,6 +6,14 @@ class Resume extends BaseCommand {
         super({
             name: 'resume',
             description: 'Resume the music',
+            name_localizations: {
+                ja: '再開',
+                ko: '재개',
+            },
+            description_localizations: {
+                ja: '音楽を再開',
+                ko: '음악 재개',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

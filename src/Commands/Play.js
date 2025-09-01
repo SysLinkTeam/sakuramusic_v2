@@ -10,17 +10,41 @@ class Play extends BaseCommand {
         super({
             name: 'play',
             description: 'Play music from Youtube or attachment',
+            name_localizations: {
+                ja: '再生',
+                ko: '재생',
+            },
+            description_localizations: {
+                ja: 'Youtubeまたは添付ファイルから音楽を再生',
+                ko: 'YouTube 또는 첨부 파일에서 음악 재생',
+            },
             type: ApplicationCommandType.ChatInput,
             options: [
                 {
                     name: 'video_info',
                     description: 'Youtube URL or Search Query',
+                    name_localizations: {
+                        ja: '動画情報',
+                        ko: '비디오정보',
+                    },
+                    description_localizations: {
+                        ja: 'YoutubeのURLまたは検索クエリ',
+                        ko: 'YouTube URL 또는 검색어',
+                    },
                     type: ApplicationCommandOptionType.String,
                     required: false
                 },
                 {
                     name: 'file',
                     description: 'Audio file attachment',
+                    name_localizations: {
+                        ja: 'ファイル',
+                        ko: '파일',
+                    },
+                    description_localizations: {
+                        ja: '音声ファイルの添付',
+                        ko: '오디오 파일 첨부',
+                    },
                     type: ApplicationCommandOptionType.Attachment,
                     required: false
                 }

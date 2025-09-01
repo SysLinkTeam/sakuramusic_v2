@@ -6,6 +6,14 @@ class Pause extends BaseCommand {
         super({
             name: 'pause',
             description: 'Pause the music',
+            name_localizations: {
+                ja: '一時停止',
+                ko: '일시정지',
+            },
+            description_localizations: {
+                ja: '音楽を一時停止',
+                ko: '음악 일시 정지',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

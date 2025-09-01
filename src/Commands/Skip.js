@@ -6,6 +6,14 @@ class Skip extends BaseCommand {
         super({
             name: 'skip',
             description: 'Skip the music',
+            name_localizations: {
+                ja: 'スキップ',
+                ko: '스킵',
+            },
+            description_localizations: {
+                ja: '音楽をスキップ',
+                ko: '음악을 스킵',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }

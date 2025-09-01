@@ -6,6 +6,14 @@ class Stop extends BaseCommand {
         super({
             name: 'stop',
             description: 'Stop the music',
+            name_localizations: {
+                ja: '停止',
+                ko: '정지',
+            },
+            description_localizations: {
+                ja: '音楽を停止',
+                ko: '음악 정지',
+            },
             type: ApplicationCommandType.ChatInput,
         });
     }
