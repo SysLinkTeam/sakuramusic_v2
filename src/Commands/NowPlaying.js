@@ -22,6 +22,9 @@ class NowPlaying extends BaseCommand {
     async execute(interaction, { queue, client }) {
         const serverQueue = queue.get(interaction.guild.id);
         if (!serverQueue) return interaction.followUp('There is no song that I could tell you about the song you are playing!');
+        if (!serverQueue.resource || !serverQueue.resource.playbackDuration) {
+            return interaction.followUp('No music is currently being played!');
+        }
         const playsec = Math.floor(serverQueue.resource.playbackDuration / 1000);
         const playtimetext = toHms(playsec);
         const musicplaytimetext = toHms(serverQueue.songs[0].totalsec);

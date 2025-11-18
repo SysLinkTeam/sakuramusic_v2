@@ -27,7 +27,7 @@ class Volume extends BaseCommand {
                         ja: '音量',
                         ko: '볼륨',
                     },
-                    type: ApplicationCommandOptionType.String,
+                    type: ApplicationCommandOptionType.Integer,
                     required: true,
                 },
             ],
@@ -37,9 +37,12 @@ class Volume extends BaseCommand {
     async execute(interaction, { queue }) {
         const serverQueue = queue.get(interaction.guild.id);
         if (!serverQueue) return interaction.followUp('There is no song that I could change volume!');
-        if (!interaction.options.getString('volume')) return interaction.followUp(`The current volume is: **${Math.round(serverQueue.resource.volume.volume * 10)}**`);
-        const volume = parseInt(interaction.options.getString('volume'));
-        if (volume > 10 || volume < 1) return interaction.followUp('Please enter a number between 1 and 10!');
+
+        const volume = interaction.options.getInteger('volume');
+        if (volume > 10 || volume < 1) {
+            return interaction.followUp('Please enter a number between 1 and 10!');
+        }
+
         serverQueue.setVolume(volume / 10);
         interaction.followUp(`I set the volume to: **${volume}**`);
     }

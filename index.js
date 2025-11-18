@@ -1,17 +1,16 @@
 try {
-    var { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
-    var { joinVoiceChannel, createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
-    var ytdl = require('ytdl-core');
-    var ytpl = require('ytpl');
-    var playdl = require("play-dl")
-    var streamer = require('yt-dlp-wrap').default;
-    var os = require('os');
-    var cron = require('node-cron');
-    var events = require('events');
-    var fs = require('fs');
-    var path = require('path');
-    var { https } = require('follow-redirects');
-    var  stream  = require('stream');
+    const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
+    const { joinVoiceChannel, createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
+    const ytdl = require('ytdl-core');
+    const ytpl = require('ytpl');
+    const playdl = require("play-dl")
+    const streamer = require('yt-dlp-wrap').default;
+    const os = require('os');
+    const cron = require('node-cron');
+    const fs = require('fs');
+    const path = require('path');
+    const { https } = require('follow-redirects');
+    const stream = require('stream');
 } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') {
         throw e;
@@ -33,8 +32,6 @@ try {
 const MusicQueue = require('./src/MusicQueue');
 const Song = require('./src/Song');
 const { toHms, parseTime } = require('./src/utils');
-const EventEmitter = events.EventEmitter;
-const ee = new EventEmitter();
 require('dotenv').config();
 process.env['YTDL_NO_UPDATE'] = true;
 
@@ -313,19 +310,7 @@ let ramUsageReportEnabled = false;
                         }
                     });
                     if (songInfo) {
-                        song = new Song({
-            title: songInfo.videoDetails.title,
-            url: songInfo.videoDetails.video_url,
-            totalsec: songInfo.videoDetails.lengthSeconds,
-            viewcount: songInfo.videoDetails.viewCount,
-            author: {
-                name: songInfo.videoDetails.author.name,
-                url: songInfo.videoDetails.author.channel_url,
-                subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                verified: songInfo.videoDetails.author.verified
-            },
-            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-        });
+                        song = Song.fromYouTubeInfo(songInfo);
                         serverQueue.songs.push(song);
                         serverQueue.autoPlayPosition++;
                         return play(guild, serverQueue.songs[0], interaction);
@@ -433,9 +418,16 @@ let ramUsageReportEnabled = false;
 
     function pickNextSong(array, playedsong) {
         if (array.length == 0 || array.length == 1) return null;
-        array = array[Math.floor(Math.random() * array.length)]
-        if (array.url == playedsong.url) return pickNextSong(array, playedsong);
-        return array;
+
+        // Filter out the currently played song to avoid infinite recursion
+        const availableSongs = array.filter(song => song.url !== playedsong.url);
+
+        // If all songs have the same URL, return null
+        if (availableSongs.length === 0) return null;
+
+        // Pick a random song from the available songs
+        const randomIndex = Math.floor(Math.random() * availableSongs.length);
+        return availableSongs[randomIndex];
     }
 
     cron.schedule('*/5 * * * * *', async () => {

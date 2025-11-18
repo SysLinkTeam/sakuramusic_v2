@@ -4,6 +4,7 @@ const { joinVoiceChannel } = require('@discordjs/voice');
 const ytpl = require('ytpl');
 const playdl = require('play-dl');
 const ytdl = require('ytdl-core');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Play extends BaseCommand {
     constructor() {
@@ -60,7 +61,7 @@ class Play extends BaseCommand {
 
         const permissions = voiceChannel.permissionsFor(interaction.client.user);
         if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
-            return interaction.followUp("I need the permissions to join and speak in your voice channel!");
+            return interaction.followUp(ERRORS.BOT_NO_PERMISSION);
         }
 
         let serverQueue = queue.get(interaction.guild.id);
@@ -110,7 +111,7 @@ class Play extends BaseCommand {
         if (url.includes('list=') && !url.includes('watch?v=')) {
             const playlist = await ytpl(url, { limit: Infinity }).catch(error => {
                 console.log(error);
-                interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
             });
             if (!playlist) return;
             musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
@@ -120,10 +121,10 @@ class Play extends BaseCommand {
             if (!url.includes('youtube.com') && !url.includes('youtu.be/')) {
                 const yt_info = await playdl.search(url, { limit: 1 }).catch(async error => {
                     errorFLG = true;
-                    return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                    return interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 });
                 if (errorFLG) return;
-                if (yt_info.length == 0) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                if (yt_info.length == 0) return interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 url = yt_info[0].url;
             }
             musiclist.push(url);
@@ -133,25 +134,13 @@ class Play extends BaseCommand {
         if (!musicInfoCache.has(musiclist[0])) {
             const songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
                 console.error(error);
-                await interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                await interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 return null;
             });
             if (!songInfo) {
                 return;
             }
-            song = new Song({
-                title: songInfo.videoDetails.title,
-                url: songInfo.videoDetails.video_url,
-                totalsec: songInfo.videoDetails.lengthSeconds,
-                viewcount: songInfo.videoDetails.viewCount,
-                author: {
-                    name: songInfo.videoDetails.author.name,
-                    url: songInfo.videoDetails.author.channel_url,
-                    subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                    verified: songInfo.videoDetails.author.verified
-                },
-                thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-            });
+            song = Song.fromYouTubeInfo(songInfo);
             if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song);
         } else {
             song = musicInfoCache.get(musiclist.shift());
@@ -178,8 +167,8 @@ class Play extends BaseCommand {
             serverQueue.songs.push(song);
         }
 
-        if (musiclist.length === 0) return interaction.followUp(`${song.title} has been added to the queue!`);
-        interaction.followUp(`We are now adding ${musiclist.length} songs to the queue.\nPleas wait a moment...\nIt may take a while to add songs to the queue.`);
+        if (musiclist.length === 0) return interaction.followUp(INFO.SONG_ADDED(song.title));
+        interaction.followUp(INFO.BULK_SONGS_ADDING(musiclist.length));
 
         const remaining = musiclist.length;
         const total = totalTracks;
@@ -197,19 +186,7 @@ class Play extends BaseCommand {
                 } else {
                     const songInfo = await ytdl.getInfo(url).catch(() => null);
                     if (songInfo) {
-                        info = new Song({
-                            title: songInfo.videoDetails.title,
-                            url: songInfo.videoDetails.video_url,
-                            totalsec: songInfo.videoDetails.lengthSeconds,
-                            viewcount: songInfo.videoDetails.viewCount,
-                            author: {
-                                name: songInfo.videoDetails.author.name,
-                                url: songInfo.videoDetails.author.channel_url,
-                                subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                                verified: songInfo.videoDetails.author.verified
-                            },
-                            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-                        });
+                        info = Song.fromYouTubeInfo(songInfo);
                         if (cacheEnabled) musicInfoCache.set(info.url, info);
                     }
                 }
