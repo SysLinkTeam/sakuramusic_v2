@@ -6,8 +6,39 @@ const playdl = require('play-dl');
 const ytdl = require('ytdl-core');
 const { ERRORS, INFO } = require('../constants/messages');
 const { ATTACHMENT, PLAYLIST } = require('../config/constants');
-const { isValidYouTubeURL, sanitizeYouTubeURL } = require('../validators');
+const { isValidYouTubeURL, sanitizeYouTubeURL, getYouTubeVideoId } = require('../validators');
 const { setupVoiceConnectionHandlers } = require('../utils/voiceConnectionHelper');
+
+/**
+ * Get cached song info using video ID (with fallback to full URL for backward compatibility)
+ * @param {Map} cache - Cache map
+ * @param {string} url - YouTube URL
+ * @returns {*} Cached song or undefined
+ */
+function getCachedSong(cache, url) {
+    const videoId = getYouTubeVideoId(url);
+    if (videoId && cache.has(videoId)) {
+        return cache.get(videoId);
+    }
+    // Fallback to full URL for backward compatibility
+    return cache.get(url);
+}
+
+/**
+ * Set cached song info using video ID
+ * @param {Map} cache - Cache map
+ * @param {string} url - YouTube URL
+ * @param {*} value - Song data to cache
+ */
+function setCachedSong(cache, url, value) {
+    const videoId = getYouTubeVideoId(url);
+    if (videoId) {
+        cache.set(videoId, value);
+    } else {
+        // Fallback to full URL if video ID extraction fails
+        cache.set(url, value);
+    }
+}
 
 class Play extends BaseCommand {
     constructor() {
@@ -174,7 +205,10 @@ class Play extends BaseCommand {
         }
 
         let song;
-        if (!musicInfoCache.has(musiclist[0])) {
+        const firstUrl = musiclist[0];
+        const cachedSong = getCachedSong(musicInfoCache, firstUrl);
+
+        if (!cachedSong) {
             const songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
                 console.error(error);
                 await interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
@@ -184,9 +218,10 @@ class Play extends BaseCommand {
                 return;
             }
             song = Song.fromYouTubeInfo(songInfo);
-            if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song);
+            if (cacheEnabled) setCachedSong(musicInfoCache, songInfo.videoDetails.video_url, song);
         } else {
-            song = musicInfoCache.get(musiclist.shift());
+            musiclist.shift(); // Remove from list
+            song = cachedSong;
         }
 
         if (!serverQueue) {
@@ -241,15 +276,16 @@ class Play extends BaseCommand {
                     // Process batch in parallel
                     const results = await Promise.allSettled(
                         batch.map(async (url) => {
-                            // Check cache first
-                            if (musicInfoCache.has(url)) {
-                                return musicInfoCache.get(url);
+                            // Check cache first using video ID
+                            const cached = getCachedSong(musicInfoCache, url);
+                            if (cached) {
+                                return cached;
                             }
 
                             // Fetch from YouTube
                             const songInfo = await ytdl.getInfo(url);
                             const info = Song.fromYouTubeInfo(songInfo);
-                            if (cacheEnabled) musicInfoCache.set(info.url, info);
+                            if (cacheEnabled) setCachedSong(musicInfoCache, info.url, info);
                             return info;
                         })
                     );

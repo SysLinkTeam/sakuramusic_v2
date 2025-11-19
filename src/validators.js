@@ -112,10 +112,42 @@ function sanitizeYouTubeURL(url) {
     }
 }
 
+/**
+ * Extracts video ID from YouTube URL
+ * @param {string} url - YouTube URL
+ * @returns {string|null} Video ID or null if extraction fails
+ */
+function getYouTubeVideoId(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+
+    try {
+        const urlObj = new URL(url);
+
+        // youtu.be format: https://youtu.be/VIDEO_ID
+        if (urlObj.hostname === 'youtu.be') {
+            const videoId = urlObj.pathname.slice(1);
+            return videoId || null;
+        }
+
+        // youtube.com format: https://www.youtube.com/watch?v=VIDEO_ID
+        if (urlObj.hostname.includes('youtube.com')) {
+            const videoId = urlObj.searchParams.get('v');
+            return videoId || null;
+        }
+
+        return null;
+    } catch (error) {
+        return null;
+    }
+}
+
 module.exports = {
     validateUserInVoiceChannel,
     validateQueueExists,
     validateMusicCommand,
     isValidYouTubeURL,
-    sanitizeYouTubeURL
+    sanitizeYouTubeURL,
+    getYouTubeVideoId
 };
