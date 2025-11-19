@@ -4,7 +4,7 @@ const { https } = require('follow-redirects');
 const stream = require('stream');
 const { createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const Song = require('../Song');
-const { toHms } = require('../utils');
+const { toHms, formatNumber } = require('../utils');
 const { AUDIO, SEARCH, QUEUE } = require('../config/constants');
 const { ERRORS, INFO } = require('../constants/messages');
 
@@ -54,7 +54,16 @@ async function searchNextAutoplaySong(songcache) {
             return null;
         }
 
-        const title = songcache.title.slice(0, songcache.title.length * SEARCH.TITLE_SEARCH_RATIO);
+        // Build search query: artist name + partial title for better results
+        let searchQuery = '';
+
+        // Include artist name if available (improves search accuracy)
+        if (songcache.author && songcache.author.name && typeof songcache.author.name === 'string') {
+            searchQuery = songcache.author.name.trim() + ' ';
+        }
+
+        // Add partial title (first 50% to avoid overly specific searches)
+        const title = songcache.title.slice(0, Math.floor(songcache.title.length * SEARCH.TITLE_SEARCH_RATIO));
 
         // Validate title is not empty after slicing
         if (!title || title.trim().length === 0) {
@@ -62,7 +71,9 @@ async function searchNextAutoplaySong(songcache) {
             return null;
         }
 
-        let yt_info = await playdl.search(title, {
+        searchQuery += title.trim();
+
+        let yt_info = await playdl.search(searchQuery, {
             limit: SEARCH.AUTO_PLAY_LIMIT
         });
 
@@ -226,23 +237,23 @@ function sendNowPlayingEmbed(serverQueue, song, client) {
             "url": song.author.url
         },
         "fields": [{
-            "name": "channel",
+            "name": "Channel",
             "value": song.author.name
         }, {
             "name": "Music length",
             "value": toHms(song.totalsec),
             "inline": true
         }, {
-            "name": "viewCount",
-            "value": song.viewcount,
+            "name": "View Count",
+            "value": formatNumber(song.viewcount),
             "inline": true
         }, {
-            "name": "Channel:subscriber",
-            "value": song.author.subscriber_count,
+            "name": "Subscribers",
+            "value": formatNumber(song.author.subscriber_count),
             "inline": true
         }, {
-            "name": "Channel:verified",
-            "value": song.author.verified,
+            "name": "Verified",
+            "value": song.author.verified ? '✓' : '✗',
             "inline": true
         }]
     };
