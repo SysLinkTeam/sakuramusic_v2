@@ -47,6 +47,9 @@ const client = new Client({
 });
 const queue = new Map();
 
+// Debounce map for voice state updates (guildId -> timeout)
+const voiceStateDebounce = new Map();
+
 // Load commands
 const commands = new Map();
 let commandList = [];
@@ -157,33 +160,63 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Voice state update handler
+// Voice state update handler with debounce
 client.on('voiceStateUpdate', async (oldState, newState) => {
     try {
-        // Check if user left channel and bot is alone
+        const guildId = oldState.guild.id;
+
+        // Check if user left channel
         if (!oldState.member || oldState.member.user.bot) return;
         if (oldState.channelId == null || newState.channelId !== null) return;
-        if (!oldState.channel || oldState.channel.members.size !== 1) return;
+        if (!oldState.channel) return;
 
-        const serverQueue = queue.get(oldState.guild.id);
+        const serverQueue = queue.get(guildId);
         if (!serverQueue) return;
 
-        // Null checks for player and connection
-        if (serverQueue.player) {
-            serverQueue.songs = [];
-            serverQueue.autoPlay = false;
-            serverQueue.player.stop();
+        // Clear any existing debounce timeout
+        if (voiceStateDebounce.has(guildId)) {
+            clearTimeout(voiceStateDebounce.get(guildId));
         }
 
-        if (serverQueue.connection) {
-            serverQueue.connection.destroy();
-        }
+        // Set debounce timeout (5 seconds)
+        const timeout = setTimeout(async () => {
+            try {
+                // Re-check if bot is still alone after delay
+                const voiceChannel = client.channels.cache.get(serverQueue.voiceChannel.id);
+                if (!voiceChannel || voiceChannel.members.size !== 1) {
+                    voiceStateDebounce.delete(guildId);
+                    return;
+                }
 
-        if (serverQueue.textChannel) {
-            serverQueue.textChannel.send(INFO.EVERYONE_LEFT);
-        }
+                console.log(`[Voice] Everyone left in guild ${guildId}, disconnecting...`);
+
+                // Stop playback and cleanup
+                if (serverQueue.player) {
+                    serverQueue.songs = [];
+                    serverQueue.autoPlay = false;
+                    serverQueue.player.stop();
+                }
+
+                if (serverQueue.connection) {
+                    serverQueue.connection.destroy();
+                }
+
+                if (serverQueue.textChannel) {
+                    await serverQueue.textChannel.send(INFO.EVERYONE_LEFT).catch(err => {
+                        console.error(`[Voice] Failed to send leave message:`, err.message);
+                    });
+                }
+
+                voiceStateDebounce.delete(guildId);
+            } catch (error) {
+                console.error(`[Voice] Error in debounced disconnect for guild ${guildId}:`, error.message);
+                voiceStateDebounce.delete(guildId);
+            }
+        }, 5000);
+
+        voiceStateDebounce.set(guildId, timeout);
     } catch (error) {
-        console.error('Error in voiceStateUpdate handler:', error);
+        console.error('[Voice] Error in voiceStateUpdate handler:', error.message);
     }
 });
 

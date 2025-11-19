@@ -5,6 +5,7 @@ const { EmbedBuilder } = require('discord.js');
 const MusicQueue = require('../MusicQueue');
 const { AUDIO } = require('../config/constants');
 const { INFO, BOT_NAME_DISPLAY } = require('../constants/messages');
+const { setupVoiceConnectionHandlers } = require('../utils/voiceConnectionHelper');
 
 /**
  * Queue Persistence Manager - Handles saving and loading queue data
@@ -217,7 +218,7 @@ class QueuePersistence {
                 });
 
                 // Reconnect to voice channel with timeout
-                value.connection = await Promise.race([
+                const connection = await Promise.race([
                     joinVoiceChannel({
                         channelId: value.voiceChannel.id,
                         guildId: value.voiceChannel.guild.id,
@@ -227,6 +228,10 @@ class QueuePersistence {
                         setTimeout(() => reject(new Error('Connection timeout')), 10000)
                     )
                 ]);
+
+                // Setup error handlers for the connection
+                setupVoiceConnectionHandlers(connection, key, queue);
+                value.connection = connection;
 
                 // Resume playback
                 play(value.voiceChannel.guild, value.songs[0], queue, client);

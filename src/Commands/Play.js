@@ -7,6 +7,7 @@ const ytdl = require('ytdl-core');
 const { ERRORS, INFO } = require('../constants/messages');
 const { ATTACHMENT, PLAYLIST } = require('../config/constants');
 const { isValidYouTubeURL, sanitizeYouTubeURL } = require('../validators');
+const { setupVoiceConnectionHandlers } = require('../utils/voiceConnectionHelper');
 
 class Play extends BaseCommand {
     constructor() {
@@ -95,6 +96,7 @@ class Play extends BaseCommand {
                         guildId: voiceChannel.guild.id,
                         adapterCreator: voiceChannel.guild.voiceAdapterCreator
                     });
+                    setupVoiceConnectionHandlers(connection, interaction.guild.id, queue);
                     queueContruct.connection = connection;
                     context.play(interaction.guild, queueContruct.songs[0], interaction);
                 } catch (err) {
@@ -197,6 +199,7 @@ class Play extends BaseCommand {
                     guildId: voiceChannel.guild.id,
                     adapterCreator: voiceChannel.guild.voiceAdapterCreator
                 });
+                setupVoiceConnectionHandlers(connection, interaction.guild.id, queue);
                 queueContruct.connection = connection;
                 context.play(interaction.guild, queueContruct.songs[0], interaction);
             } catch (err) {
