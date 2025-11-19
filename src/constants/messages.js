@@ -39,7 +39,8 @@ YouTube API may be experiencing high load due to time of day or other factors.`,
     // Input validation errors
     INVALID_SONG_NUMBER: 'Please enter a valid song number!',
     INVALID_VOLUME: 'Please enter a number between 1 and 10!',
-    INVALID_SEEK_TIME: 'Please enter a valid time!',
+    INVALID_SEEK_TIME: 'Please enter a valid time! Examples: `60` (seconds), `1:30` (mm:ss), `1:05:30` (hh:mm:ss)',
+    INVALID_SEEK_RANGE: (max) => `Seek time must be between **0:00** and **${max}**!`,
     INVALID_URL: 'Invalid URL provided. Please provide a valid YouTube URL.',
     PLAYLIST_TOO_LARGE: (max) => `This playlist is too large! Maximum allowed size is ${max} songs.`,
     NEED_URL_OR_FILE: 'You need to provide a URL/search query or attach an audio file.',
@@ -76,7 +77,9 @@ YouTube API may be experiencing high load due to time of day or other factors.`,
     SONG_STOPPED: 'Stopped the song!',
     SONG_REMOVED: (number) => `I removed the song number: **${number}**`,
     SKIPPED_TO: (number) => `I skipped to the song number: **${number}**`,
-    VOLUME_SET: (volume) => `I set the volume to: **${volume}**`,
+    VOLUME_SET: (volume, oldVolume = null) => oldVolume !== null ?
+      `Volume changed from **${oldVolume}** to **${volume}**` :
+      `I set the volume to: **${volume}**`,
     SEEKED_TO: (time) => `Seeked to: **${time}**`,
 
     // Loop control

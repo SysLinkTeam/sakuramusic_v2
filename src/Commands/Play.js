@@ -214,47 +214,78 @@ class Play extends BaseCommand {
         const remaining = musiclist.length;
         const total = totalTracks;
 
-        setImmediate(async () => {
-            let processed = 1;
-            const progressEmbeds = [];
-            const batchEmbeds = [];
-            const batchLimit = total < PLAYLIST.BATCH_LIMIT_SMALL ? Infinity
-                             : total < PLAYLIST.BATCH_LIMIT_MEDIUM ? PLAYLIST.BATCH_SIZE_MEDIUM
-                             : PLAYLIST.BATCH_SIZE_LARGE;
+        // Process playlist in parallel with cancellation support
+        (async () => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
-            for (const url of musiclist) {
-                let info;
-                if (musicInfoCache.has(url)) {
-                    info = musicInfoCache.get(url);
-                } else {
-                    const songInfo = await ytdl.getInfo(url).catch(() => null);
-                    if (songInfo) {
-                        info = Song.fromYouTubeInfo(songInfo);
-                        if (cacheEnabled) musicInfoCache.set(info.url, info);
+            try {
+                let processed = 1; // First song already processed
+                let failedCount = 0;
+                const PARALLEL_BATCH_SIZE = 5; // Process 5 songs at a time
+
+                // Dynamic progress report interval based on playlist size
+                const reportInterval = total < 50 ? 10 : total < 200 ? 25 : PLAYLIST.PROGRESS_REPORT_INTERVAL;
+
+                for (let i = 0; i < musiclist.length; i += PARALLEL_BATCH_SIZE) {
+                    if (controller.signal.aborted) {
+                        interaction.channel.send(`Playlist processing cancelled. Added ${processed - 1 - failedCount} songs.`);
+                        break;
+                    }
+
+                    const batch = musiclist.slice(i, i + PARALLEL_BATCH_SIZE);
+
+                    // Process batch in parallel
+                    const results = await Promise.allSettled(
+                        batch.map(async (url) => {
+                            // Check cache first
+                            if (musicInfoCache.has(url)) {
+                                return musicInfoCache.get(url);
+                            }
+
+                            // Fetch from YouTube
+                            const songInfo = await ytdl.getInfo(url);
+                            const info = Song.fromYouTubeInfo(songInfo);
+                            if (cacheEnabled) musicInfoCache.set(info.url, info);
+                            return info;
+                        })
+                    );
+
+                    // Add successful results to queue
+                    for (const result of results) {
+                        if (result.status === 'fulfilled' && result.value) {
+                            serverQueue.songs.push(result.value);
+                        } else {
+                            failedCount++;
+                            console.error(`[Playlist] Failed to fetch song:`, result.reason?.message);
+                        }
+                    }
+
+                    processed += batch.length;
+
+                    // Report progress
+                    if (processed % reportInterval === 0 || processed >= total || i === 0) {
+                        const percent = Math.floor((processed / total) * 100);
+                        const successCount = processed - 1 - failedCount;
+                        const embed = new EmbedBuilder()
+                            .setDescription(`Adding playlist... ${successCount}/${total} (${percent}%)${failedCount > 0 ? ` | ${failedCount} failed` : ''}`);
+                        await interaction.channel.send({ embeds: [embed] });
                     }
                 }
-                if (info) serverQueue.songs.push(info);
-                processed++;
-                if (processed % PLAYLIST.PROGRESS_REPORT_INTERVAL === 0 || processed === total) {
-                    const embed = new EmbedBuilder().setDescription(`Adding playlist... (${processed}/${total})`);
-                    progressEmbeds.push(embed);
-                    batchEmbeds.push(embed);
-                    if (total >= PLAYLIST.BATCH_LIMIT_SMALL && (batchEmbeds.length === batchLimit || processed === total)) {
-                        await interaction.channel.send({ embeds: batchEmbeds });
-                        batchEmbeds.length = 0;
-                    }
-                }
-                await new Promise(r => setImmediate(r));
-            }
 
-            if (total < PLAYLIST.BATCH_LIMIT_SMALL && progressEmbeds.length) {
-                await interaction.channel.send({ embeds: progressEmbeds });
-            } else if (batchEmbeds.length) {
-                await interaction.channel.send({ embeds: batchEmbeds });
-            }
+                clearTimeout(timeout);
 
-            interaction.channel.send(`Added ${remaining} songs to the queue!`);
-        });
+                // Final report
+                const successCount = processed - 1 - failedCount;
+                const message = `✅ Added ${successCount} songs to the queue!${failedCount > 0 ? ` (${failedCount} songs failed to load)` : ''}`;
+                interaction.channel.send(message);
+
+            } catch (error) {
+                clearTimeout(timeout);
+                console.error('[Playlist] Error processing playlist:', error);
+                interaction.channel.send(`Error processing playlist. Some songs may not have been added.`);
+            }
+        })();
     }
 }
 

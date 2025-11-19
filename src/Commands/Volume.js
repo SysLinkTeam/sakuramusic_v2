@@ -46,8 +46,12 @@ class Volume extends BaseCommand {
             return interaction.followUp(ERRORS.INVALID_VOLUME);
         }
 
+        // Get current volume before changing
+        const currentVolume = serverQueue.resource && serverQueue.resource.volume ?
+            Math.round(serverQueue.resource.volume.volume * 10) : null;
+
         serverQueue.setVolume(volume / 10);
-        interaction.followUp(INFO.VOLUME_SET(volume));
+        interaction.followUp(INFO.VOLUME_SET(volume, currentVolume));
     }
 }
 module.exports = Volume;

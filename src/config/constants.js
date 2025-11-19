@@ -13,6 +13,8 @@ module.exports = {
   CACHE: {
     AUTO_SAVE_INTERVAL: '*/5 * * * * *', // Every 5 seconds
     MEMORY_THRESHOLD: 0.8, // 80% memory usage threshold before clearing cache
+    TTL: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    CLEANUP_INTERVAL: '0 */6 * * *', // Cleanup expired entries every 6 hours
   },
 
   // Playlist batch processing limits

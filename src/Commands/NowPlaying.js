@@ -1,6 +1,6 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
-const { toHms } = require('../utils');
+const { toHms, formatNumber } = require('../utils');
 const { validateMusicCommand } = require('../validators');
 const { ERRORS, BOT_NAME } = require('../constants/messages');
 const { QUEUE } = require('../config/constants');
@@ -55,13 +55,13 @@ class NowPlaying extends BaseCommand {
                 url: serverQueue.songs[0].author.url,
             },
             fields: [
-                { name: 'channel', value: serverQueue.songs[0].author.name },
+                { name: 'Channel', value: serverQueue.songs[0].author.name },
                 { name: 'Play time', value: playtimetext, inline: true },
                 { name: 'Music length', value: musicplaytimetext, inline: true },
                 { name: 'Progress', value: nowprogresstext },
-                { name: 'viewCount', value: serverQueue.songs[0].viewcount, inline: true },
-                { name: 'Channel:subscriber', value: serverQueue.songs[0].author.subscriber_count, inline: true },
-                { name: 'Channel:verified', value: serverQueue.songs[0].author.verified, inline: true },
+                { name: 'View Count', value: formatNumber(serverQueue.songs[0].viewcount), inline: true },
+                { name: 'Subscribers', value: formatNumber(serverQueue.songs[0].author.subscriber_count), inline: true },
+                { name: 'Verified', value: serverQueue.songs[0].author.verified ? '✓' : '✗', inline: true },
             ],
         };
         interaction.followUp({ embeds: [embed] });

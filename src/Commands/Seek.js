@@ -43,8 +43,16 @@ class Seek extends BaseCommand {
 
         const position = interaction.options.getString('position');
         const seconds = parseTime(position);
-        if (seconds === null) return interaction.followUp(ERRORS.INVALID_SEEK_TIME);
-        if (seconds < 0 || seconds > serverQueue.songs[0].totalsec) return interaction.followUp(ERRORS.INVALID_SEEK_TIME);
+
+        // Invalid format
+        if (seconds === null) {
+            return interaction.followUp(ERRORS.INVALID_SEEK_TIME);
+        }
+
+        // Out of range
+        if (seconds < 0 || seconds > serverQueue.songs[0].totalsec) {
+            return interaction.followUp(ERRORS.INVALID_SEEK_RANGE(toHms(serverQueue.songs[0].totalsec)));
+        }
 
         await serverQueue.seek(seconds);
         interaction.followUp(INFO.SEEKED_TO(toHms(seconds)));

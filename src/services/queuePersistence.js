@@ -196,22 +196,62 @@ class QueuePersistence {
             .setColor("#ff0000")
             .setFooter({ text: BOT_NAME_DISPLAY, iconURL: client.user.displayAvatarURL() });
 
-        for (const [key, value] of queue) {
-            if (value.songs.length === 0) continue;
+        // Process all restorations in parallel with individual error handling
+        const restorePromises = Array.from(queue.entries()).map(async ([key, value]) => {
+            try {
+                if (!value.songs || value.songs.length === 0) {
+                    console.log(`[Restore] Skipping guild ${key}: no songs in queue`);
+                    return;
+                }
 
-            // Send reboot notification
-            await value.textChannel.send({ embeds: [rebootEmbed] });
+                // Validate channels still exist
+                if (!value.textChannel || !value.voiceChannel) {
+                    console.warn(`[Restore] Guild ${key}: channels no longer exist`);
+                    queue.delete(key);
+                    return;
+                }
 
-            // Reconnect to voice channel
-            value.connection = await joinVoiceChannel({
-                channelId: value.voiceChannel.id,
-                guildId: value.voiceChannel.guild.id,
-                adapterCreator: value.voiceChannel.guild.voiceAdapterCreator
-            });
+                // Send reboot notification
+                await value.textChannel.send({ embeds: [rebootEmbed] }).catch(error => {
+                    console.error(`[Restore] Failed to send reboot message to guild ${key}:`, error.message);
+                });
 
-            // Resume playback
-            play(value.voiceChannel.guild, value.songs[0], queue, client);
-        }
+                // Reconnect to voice channel with timeout
+                value.connection = await Promise.race([
+                    joinVoiceChannel({
+                        channelId: value.voiceChannel.id,
+                        guildId: value.voiceChannel.guild.id,
+                        adapterCreator: value.voiceChannel.guild.voiceAdapterCreator
+                    }),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Connection timeout')), 10000)
+                    )
+                ]);
+
+                // Resume playback
+                play(value.voiceChannel.guild, value.songs[0], queue, client);
+                console.log(`[Restore] Successfully restored queue for guild ${key}`);
+
+            } catch (error) {
+                console.error(`[Restore] Failed to restore queue for guild ${key}:`, error.message);
+                queue.delete(key); // Remove failed queue
+
+                // Try to notify user of failure
+                try {
+                    if (value.textChannel) {
+                        await value.textChannel.send(
+                            '⚠️ Failed to restore playback after reboot. Please use `/play` to start again.'
+                        );
+                    }
+                } catch (notifyError) {
+                    console.error(`[Restore] Failed to send restore error message:`, notifyError.message);
+                }
+            }
+        });
+
+        // Wait for all restorations to complete
+        await Promise.allSettled(restorePromises);
+        console.log(`[Restore] Restoration complete. ${queue.size} queues active.`);
     }
 }
 

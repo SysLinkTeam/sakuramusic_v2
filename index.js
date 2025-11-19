@@ -213,6 +213,12 @@ cron.schedule(CACHE.AUTO_SAVE_INTERVAL, async () => {
     context.cacheEnabled = cacheManager.enabled;
 });
 
+// Cleanup expired cache entries every 6 hours
+cron.schedule(CACHE.CLEANUP_INTERVAL, () => {
+    console.log('[Cron] Running cache cleanup...');
+    cacheManager.cleanExpired();
+});
+
 // Login with token validation
 const token = process.env.token;
 

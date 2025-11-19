@@ -25,15 +25,30 @@ class Queue extends BaseCommand {
         const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_SHOW_QUEUE);
         if (error) return interaction.followUp(error);
 
-        let songlist = serverQueue.songs.map(song => `**-** ${song.title}`).join('\n');
-        if (songlist.length > QUEUE.MAX_DISPLAY_LENGTH) {
-            const truncatedList = songlist.slice(0, QUEUE.MAX_DISPLAY_LENGTH).split('\n').slice(0, -1);
-            const remainingSongs = serverQueue.songs.length - truncatedList.length;
-            songlist = truncatedList.join('\n') + `\n...and more ${remainingSongs} songs in queue!`;
+        // Build queue string efficiently without mapping entire array
+        let songlist = '';
+        let songsDisplayed = 0;
+
+        for (let i = 0; i < serverQueue.songs.length; i++) {
+            const line = `**-** ${serverQueue.songs[i].title}\n`;
+
+            // Check if adding this line would exceed the limit
+            if (songlist.length + line.length > QUEUE.MAX_DISPLAY_LENGTH) {
+                const remainingSongs = serverQueue.songs.length - songsDisplayed;
+                songlist += `\n...and ${remainingSongs} more song${remainingSongs !== 1 ? 's' : ''} in queue!`;
+                break;
+            }
+
+            songlist += line;
+            songsDisplayed++;
         }
+
+        // Remove trailing newline
+        songlist = songlist.trimEnd();
+
         const embed = new EmbedBuilder()
-            .setTitle('Queue')
-            .setDescription(`Now Playing: ${serverQueue.songs[0].title}\n\n${songlist}`)
+            .setTitle(`Queue (${serverQueue.songs.length} song${serverQueue.songs.length !== 1 ? 's' : ''})`)
+            .setDescription(`**Now Playing:** ${serverQueue.songs[0].title}\n\n${songlist}`)
             .setFooter({
                 text: BOT_NAME,
                 iconURL: client.user.displayAvatarURL(),

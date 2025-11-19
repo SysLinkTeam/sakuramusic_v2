@@ -7,10 +7,11 @@ const { CACHE } = require('../config/constants');
  */
 class CacheManager {
     constructor() {
-        this.cache = new Map();
+        this.cache = new Map(); // Map<videoId, { data: Song, expires: timestamp }>
         this.enabled = true;
         this.ramUsageReportEnabled = false;
         this.cacheFilePath = './cache.json';
+        this.ttl = CACHE.TTL; // 7 days
     }
 
     /**
@@ -145,32 +146,75 @@ class CacheManager {
     }
 
     /**
-     * Get item from cache
+     * Get item from cache with TTL check
      * @param {string} key - Cache key
-     * @returns {*} Cached value or undefined
+     * @returns {*} Cached value or undefined (if expired or not found)
      */
     get(key) {
-        return this.cache.get(key);
+        const entry = this.cache.get(key);
+        if (!entry) return undefined;
+
+        // Check if expired
+        if (Date.now() > entry.expires) {
+            this.cache.delete(key);
+            return undefined;
+        }
+
+        return entry.data;
     }
 
     /**
-     * Check if key exists in cache
+     * Check if key exists in cache and is not expired
      * @param {string} key - Cache key
      * @returns {boolean}
      */
     has(key) {
-        return this.cache.has(key);
+        const entry = this.cache.get(key);
+        if (!entry) return false;
+
+        // Check if expired
+        if (Date.now() > entry.expires) {
+            this.cache.delete(key);
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * Set item in cache
+     * Set item in cache with TTL
      * @param {string} key - Cache key
      * @param {*} value - Value to cache
      */
     set(key, value) {
         if (this.enabled) {
-            this.cache.set(key, value);
+            this.cache.set(key, {
+                data: value,
+                expires: Date.now() + this.ttl
+            });
         }
+    }
+
+    /**
+     * Clean expired entries from cache
+     * @returns {number} Number of entries removed
+     */
+    cleanExpired() {
+        const now = Date.now();
+        let removed = 0;
+
+        for (const [key, entry] of this.cache.entries()) {
+            if (now > entry.expires) {
+                this.cache.delete(key);
+                removed++;
+            }
+        }
+
+        if (removed > 0) {
+            console.log(`[Cache] Cleaned ${removed} expired entries`);
+        }
+
+        return removed;
     }
 
     /**
