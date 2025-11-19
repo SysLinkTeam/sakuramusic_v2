@@ -2,6 +2,8 @@ const fs = require('fs');
 const { joinVoiceChannel } = require('@discordjs/voice');
 const { EmbedBuilder } = require('discord.js');
 const MusicQueue = require('../MusicQueue');
+const { AUDIO } = require('../config/constants');
+const { INFO, BOT_NAME_DISPLAY } = require('../constants/messages');
 
 /**
  * Queue Persistence Manager - Handles saving and loading queue data
@@ -33,7 +35,7 @@ class QueuePersistence {
                 autoPlay: value.autoPlay,
                 autoPlayPosition: value.autoPlayPosition,
                 paused: value.paused,
-                volume: value.resource && value.resource.volume ? value.resource.volume.volume : 0.2
+                volume: value.resource && value.resource.volume ? value.resource.volume.volume : AUDIO.DEFAULT_VOLUME
             };
             i++;
         });
@@ -108,10 +110,10 @@ class QueuePersistence {
      */
     async restorePlayback(queue, play, client) {
         const rebootEmbed = new EmbedBuilder()
-            .setTitle("Sorry for the inconvenience...")
-            .setDescription("We are sorry that you had to restart the bot while using our service.\nWe are always working to fix bugs, add new features and improve stability.\nPlease be assured that we will be restarting soon, and that your queue and other data will be preserved after the restart.")
+            .setTitle(INFO.REBOOT_MESSAGE.title)
+            .setDescription(INFO.REBOOT_MESSAGE.description)
             .setColor("#ff0000")
-            .setFooter({ text: "SakuraMusic v2", iconURL: client.user.displayAvatarURL() });
+            .setFooter({ text: BOT_NAME_DISPLAY, iconURL: client.user.displayAvatarURL() });
 
         for (const [key, value] of queue) {
             if (value.songs.length === 0) continue;

@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Pause extends BaseCommand {
     constructor() {
@@ -19,11 +21,13 @@ class Pause extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could pause!');
-        if (serverQueue.paused) return interaction.followUp('The song is already paused!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_PAUSE);
+        if (error) return interaction.followUp(error);
+
+        if (serverQueue.paused) return interaction.followUp(ERRORS.SONG_ALREADY_PAUSED);
+
         serverQueue.pause();
-        interaction.followUp('Paused the song!');
+        interaction.followUp(INFO.SONG_PAUSED);
     }
 }
 module.exports = Pause;

@@ -5,6 +5,7 @@ const ytpl = require('ytpl');
 const playdl = require('play-dl');
 const ytdl = require('ytdl-core');
 const { ERRORS, INFO } = require('../constants/messages');
+const { ATTACHMENT, PLAYLIST } = require('../config/constants');
 
 class Play extends BaseCommand {
     constructor() {
@@ -57,7 +58,7 @@ class Play extends BaseCommand {
         const { queue, MusicQueue, Song, musicInfoCache, cacheEnabled } = context;
 
         const voiceChannel = interaction.member.voice.channel;
-        if (!voiceChannel) return interaction.followUp('You need to be in a voice channel to play music!');
+        if (!voiceChannel) return interaction.followUp(ERRORS.NOT_IN_VOICE_CHANNEL);
 
         const permissions = voiceChannel.permissionsFor(interaction.client.user);
         if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
@@ -68,7 +69,7 @@ class Play extends BaseCommand {
         let url = interaction.options.getString('video_info');
         const attachment = interaction.options.getAttachment('file');
         if (!url && !attachment) {
-            return interaction.followUp('You need to provide a URL/search query or attach an audio file.');
+            return interaction.followUp(ERRORS.NEED_URL_OR_FILE);
         }
 
         if (attachment) {
@@ -80,7 +81,7 @@ class Play extends BaseCommand {
                 author: { name: interaction.user.username, url: null },
                 thumbnail: interaction.user.displayAvatarURL(),
                 type: 'attachment',
-                expiresAt: Date.now() + 7200000
+                expiresAt: Date.now() + ATTACHMENT.EXPIRY_TIME
             });
 
             if (!serverQueue) {
@@ -96,21 +97,21 @@ class Play extends BaseCommand {
                     queueContruct.connection = connection;
                     context.play(interaction.guild, queueContruct.songs[0], interaction);
                 } catch (err) {
-                    console.log(err);
+                    console.error(err);
                     queue.delete(interaction.guild.id);
-                    return interaction.followUp(err);
+                    return interaction.followUp(err.message || ERRORS.COMMAND_EXECUTION_ERROR);
                 }
             } else {
                 serverQueue.songs.push(song);
             }
-            return interaction.followUp(`${song.title} has been added to the queue!`);
+            return interaction.followUp(INFO.SONG_ADDED(song.title));
         }
 
         const musiclist = [];
         let totalTracks = 1;
         if (url.includes('list=') && !url.includes('watch?v=')) {
             const playlist = await ytpl(url, { limit: Infinity }).catch(error => {
-                console.log(error);
+                console.error(error);
                 interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
             });
             if (!playlist) return;
@@ -159,9 +160,9 @@ class Play extends BaseCommand {
                 queueContruct.connection = connection;
                 context.play(interaction.guild, queueContruct.songs[0], interaction);
             } catch (err) {
-                console.log(err);
+                console.error(err);
                 queue.delete(interaction.guild.id);
-                return interaction.followUp(err);
+                return interaction.followUp(err.message || ERRORS.COMMAND_EXECUTION_ERROR);
             }
         } else {
             serverQueue.songs.push(song);
@@ -177,7 +178,9 @@ class Play extends BaseCommand {
             let processed = 1;
             const progressEmbeds = [];
             const batchEmbeds = [];
-            const batchLimit = total < 300 ? Infinity : total < 1000 ? 5 : 10;
+            const batchLimit = total < PLAYLIST.BATCH_LIMIT_SMALL ? Infinity
+                             : total < PLAYLIST.BATCH_LIMIT_MEDIUM ? PLAYLIST.BATCH_SIZE_MEDIUM
+                             : PLAYLIST.BATCH_SIZE_LARGE;
 
             for (const url of musiclist) {
                 let info;
@@ -192,11 +195,11 @@ class Play extends BaseCommand {
                 }
                 if (info) serverQueue.songs.push(info);
                 processed++;
-                if (processed % 100 === 0 || processed === total) {
+                if (processed % PLAYLIST.PROGRESS_REPORT_INTERVAL === 0 || processed === total) {
                     const embed = new EmbedBuilder().setDescription(`Adding playlist... (${processed}/${total})`);
                     progressEmbeds.push(embed);
                     batchEmbeds.push(embed);
-                    if (total >= 300 && (batchEmbeds.length === batchLimit || processed === total)) {
+                    if (total >= PLAYLIST.BATCH_LIMIT_SMALL && (batchEmbeds.length === batchLimit || processed === total)) {
                         await interaction.channel.send({ embeds: batchEmbeds });
                         batchEmbeds.length = 0;
                     }
@@ -204,7 +207,7 @@ class Play extends BaseCommand {
                 await new Promise(r => setImmediate(r));
             }
 
-            if (total < 300 && progressEmbeds.length) {
+            if (total < PLAYLIST.BATCH_LIMIT_SMALL && progressEmbeds.length) {
                 await interaction.channel.send({ embeds: progressEmbeds });
             } else if (batchEmbeds.length) {
                 await interaction.channel.send({ embeds: batchEmbeds });

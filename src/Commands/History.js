@@ -1,5 +1,5 @@
 const BaseCommand = require('./BaseCommand');
-const { ApplicationCommandType, ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
+const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
 
 class History extends BaseCommand {
     constructor() {

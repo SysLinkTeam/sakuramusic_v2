@@ -50,5 +50,22 @@ module.exports = {
     },
     VERSION_FILE: './yt-dlp_version',
     API_URL: 'https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest'
+  },
+
+  // Queue display
+  QUEUE: {
+    MAX_DISPLAY_LENGTH: 1500, // Maximum character length for queue display
+    PROGRESS_BAR_BLOCKS: 20,   // Number of blocks in progress bar
+  },
+
+  // Shuffle
+  SHUFFLE: {
+    MINIMUM_SONGS: 3, // Minimum songs required to shuffle
+  },
+
+  // Volume limits
+  VOLUME: {
+    MIN: 1,
+    MAX: 10,
   }
 };

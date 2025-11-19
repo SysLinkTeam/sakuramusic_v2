@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class SkipTo extends BaseCommand {
     constructor() {
@@ -35,12 +37,14 @@ class SkipTo extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could skip to!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_SKIP_TO);
+        if (error) return interaction.followUp(error);
+
+        if (!serverQueue.player) return interaction.followUp(ERRORS.NO_SONG_PLAYING);
 
         const songNumber = interaction.options.getInteger('songnumber');
         if (songNumber > serverQueue.songs.length || songNumber < 1) {
-            return interaction.followUp('Please enter a valid song number!');
+            return interaction.followUp(ERRORS.INVALID_SONG_NUMBER);
         }
 
         const removed = serverQueue.songs.splice(0, songNumber - 1);
@@ -48,7 +52,7 @@ class SkipTo extends BaseCommand {
             serverQueue.songs.push(...removed);
         }
         serverQueue.player.stop();
-        interaction.followUp(`I skipped to the song number: **${songNumber}**`);
+        interaction.followUp(INFO.SKIPPED_TO(songNumber));
     }
 }
 module.exports = SkipTo;

@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Clear extends BaseCommand {
     constructor() {
@@ -19,11 +21,15 @@ class Clear extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could clear!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_CLEAR);
+        if (error) return interaction.followUp(error);
+
+        if (!serverQueue.player) return interaction.followUp(ERRORS.NO_SONG_PLAYING);
+
         serverQueue.songs = [];
+        serverQueue.autoPlay = false;
         serverQueue.player.stop();
-        interaction.followUp('Cleared the queue!');
+        interaction.followUp(INFO.QUEUE_CLEARED);
     }
 }
 module.exports = Clear;

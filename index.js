@@ -35,6 +35,7 @@ const MusicQueue = require('./src/MusicQueue');
 const Song = require('./src/Song');
 const { toHms, parseTime } = require('./src/utils');
 const { CACHE } = require('./src/config/constants');
+const { INFO } = require('./src/constants/messages');
 
 process.env['YTDL_NO_UPDATE'] = true;
 
@@ -137,20 +138,31 @@ client.on('interactionCreate', async interaction => {
 
 // Voice state update handler
 client.on('voiceStateUpdate', async (oldState, newState) => {
-    // Check if user left channel and bot is alone
-    if (!oldState.member.user.bot &&
-        oldState.channelId != null &&
-        newState.channelId === null &&
-        oldState.channel.members.size === 1) {
+    try {
+        // Check if user left channel and bot is alone
+        if (!oldState.member || oldState.member.user.bot) return;
+        if (oldState.channelId == null || newState.channelId !== null) return;
+        if (!oldState.channel || oldState.channel.members.size !== 1) return;
 
         const serverQueue = queue.get(oldState.guild.id);
         if (!serverQueue) return;
 
-        serverQueue.songs = [];
-        serverQueue.autoPlay = false;
-        serverQueue.player.stop();
-        serverQueue.connection.destroy();
-        serverQueue.textChannel.send('Everyone left the voice channel, so I left the voice channel as well!');
+        // Null checks for player and connection
+        if (serverQueue.player) {
+            serverQueue.songs = [];
+            serverQueue.autoPlay = false;
+            serverQueue.player.stop();
+        }
+
+        if (serverQueue.connection) {
+            serverQueue.connection.destroy();
+        }
+
+        if (serverQueue.textChannel) {
+            serverQueue.textChannel.send(INFO.EVERYONE_LEFT);
+        }
+    } catch (error) {
+        console.error('Error in voiceStateUpdate handler:', error);
     }
 });
 

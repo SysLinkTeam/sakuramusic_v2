@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Remove extends BaseCommand {
     constructor() {
@@ -35,16 +37,16 @@ class Remove extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could remove!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_REMOVE);
+        if (error) return interaction.followUp(error);
 
         const songNumber = interaction.options.getInteger('songnumber');
         if (songNumber > serverQueue.songs.length || songNumber < 1) {
-            return interaction.followUp('Please enter a valid song number!');
+            return interaction.followUp(ERRORS.INVALID_SONG_NUMBER);
         }
 
         serverQueue.songs.splice(songNumber - 1, 1);
-        interaction.followUp(`I removed the song number: **${songNumber}**`);
+        interaction.followUp(INFO.SONG_REMOVED(songNumber));
     }
 }
 module.exports = Remove;

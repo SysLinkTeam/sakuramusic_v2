@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Skip extends BaseCommand {
     constructor() {
@@ -19,11 +21,13 @@ class Skip extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to skip the music!');
-        if (!serverQueue) return interaction.followUp('There is no song that I could skip!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_SKIP);
+        if (error) return interaction.followUp(error);
+
+        if (!serverQueue.player) return interaction.followUp(ERRORS.NO_SONG_PLAYING);
+
         serverQueue.player.stop();
-        interaction.followUp('Skipped the song!');
+        interaction.followUp(INFO.SONG_SKIPPED);
     }
 }
 module.exports = Skip;

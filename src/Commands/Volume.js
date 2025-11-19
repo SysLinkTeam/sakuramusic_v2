@@ -1,5 +1,8 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
+const { VOLUME } = require('../config/constants');
 
 class Volume extends BaseCommand {
     constructor() {
@@ -35,16 +38,16 @@ class Volume extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could change volume!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_CHANGE_VOLUME);
+        if (error) return interaction.followUp(error);
 
         const volume = interaction.options.getInteger('volume');
-        if (volume > 10 || volume < 1) {
-            return interaction.followUp('Please enter a number between 1 and 10!');
+        if (volume > VOLUME.MAX || volume < VOLUME.MIN) {
+            return interaction.followUp(ERRORS.INVALID_VOLUME);
         }
 
         serverQueue.setVolume(volume / 10);
-        interaction.followUp(`I set the volume to: **${volume}**`);
+        interaction.followUp(INFO.VOLUME_SET(volume));
     }
 }
 module.exports = Volume;

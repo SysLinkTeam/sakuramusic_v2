@@ -6,6 +6,7 @@ const { createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberB
 const Song = require('../Song');
 const { toHms } = require('../utils');
 const { AUDIO, SEARCH } = require('../config/constants');
+const { ERRORS, INFO } = require('../constants/messages');
 
 /**
  * Picks a random song from array that is different from the played song
@@ -68,12 +69,12 @@ async function fetchSongInfo(url) {
  * @returns {Promise<void>}
  */
 async function handleAutoplay(guild, serverQueue, songcache, play, queue) {
-    serverQueue.textChannel.send('Auto play is enabled, so I will search next song for you!');
+    serverQueue.textChannel.send(INFO.AUTOPLAY_SEARCHING);
 
     const nextSongInfo = await searchNextAutoplaySong(songcache);
 
     if (!nextSongInfo) {
-        serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
+        serverQueue.textChannel.send(ERRORS.AUTOPLAY_NO_NEXT_SONG);
         if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
         queue.delete(guild.id);
         return;
@@ -82,7 +83,7 @@ async function handleAutoplay(guild, serverQueue, songcache, play, queue) {
     const song = await fetchSongInfo(nextSongInfo.url);
 
     if (!song) {
-        serverQueue.textChannel.send('I find the next song, but I cannot play it, so I will stop playing music.\nPlease try again later.');
+        serverQueue.textChannel.send(ERRORS.AUTOPLAY_CANNOT_PLAY);
         if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
         queue.delete(guild.id);
         return;
@@ -232,7 +233,7 @@ async function play(guild, song, queue, client, interaction = null, songcache = 
             return await handleAutoplay(guild, serverQueue, songcache, play, queue);
         }
 
-        serverQueue.textChannel.send('Stop playing music because there is no song in the queue!');
+        serverQueue.textChannel.send(INFO.QUEUE_EMPTY_STOP);
         if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
         queue.delete(guild.id);
         return;
@@ -240,7 +241,7 @@ async function play(guild, song, queue, client, interaction = null, songcache = 
 
     // Handle expired attachments
     if (isAttachmentExpired(song)) {
-        serverQueue.textChannel.send('Attachment link expired, skipping.');
+        serverQueue.textChannel.send(ERRORS.ATTACHMENT_EXPIRED);
         serverQueue.songs.shift();
         return play(guild, serverQueue.songs[0], queue, client, interaction);
     }

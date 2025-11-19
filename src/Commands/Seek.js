@@ -1,6 +1,8 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
 const { parseTime, toHms } = require('../utils');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Seek extends BaseCommand {
     constructor() {
@@ -36,14 +38,16 @@ class Seek extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could seek!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_SEEK);
+        if (error) return interaction.followUp(error);
+
         const position = interaction.options.getString('position');
         const seconds = parseTime(position);
-        if (seconds === null) return interaction.followUp('Please enter a valid time!');
-        if (seconds < 0 || seconds > serverQueue.songs[0].totalsec) return interaction.followUp('Please enter a time within the length of the song!');
+        if (seconds === null) return interaction.followUp(ERRORS.INVALID_SEEK_TIME);
+        if (seconds < 0 || seconds > serverQueue.songs[0].totalsec) return interaction.followUp(ERRORS.INVALID_SEEK_TIME);
+
         await serverQueue.seek(seconds);
-        interaction.followUp(`Seeked to **${toHms(seconds)}**!`);
+        interaction.followUp(INFO.SEEKED_TO(toHms(seconds)));
     }
 }
 module.exports = Seek;

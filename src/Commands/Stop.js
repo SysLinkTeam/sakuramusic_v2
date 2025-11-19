@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Stop extends BaseCommand {
     constructor() {
@@ -19,13 +21,15 @@ class Stop extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to stop the music!');
-        if (!serverQueue) return interaction.followUp('There is no song that I could stop!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_STOP);
+        if (error) return interaction.followUp(error);
+
+        if (!serverQueue.player) return interaction.followUp(ERRORS.NO_SONG_PLAYING);
+
         serverQueue.songs = [];
         serverQueue.autoPlay = false;
         serverQueue.player.stop();
-        interaction.followUp('Stopped the music!');
+        interaction.followUp(INFO.SONG_STOPPED);
     }
 }
 module.exports = Stop;

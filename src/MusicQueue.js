@@ -1,5 +1,6 @@
 const ytdl = require('ytdl-core');
 const { createAudioResource } = require('@discordjs/voice');
+const { AUDIO } = require('./config/constants');
 
 class MusicQueue {
   constructor(textChannel, voiceChannel) {
@@ -68,14 +69,14 @@ class MusicQueue {
       const stream = ytdl(this.songs[0].url, {
         filter: 'audioonly',
         quality: 'highestaudio',
-        highWaterMark: 1 << 25,
+        highWaterMark: AUDIO.HIGH_WATER_MARK,
         begin: seconds * 1000,
       }).on('error', err => {
         console.error(err);
         this.textChannel.send('Failed to seek.');
       });
       const resource = createAudioResource(stream, { inlineVolume: true });
-      const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : 0.2;
+      const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : AUDIO.DEFAULT_VOLUME;
       resource.volume.setVolume(currentVolume);
       this.resource = resource;
       this.player.play(resource);
