@@ -1,5 +1,6 @@
 const ytdl = require('ytdl-core');
 const { createAudioResource } = require('@discordjs/voice');
+const { AUDIO } = require('./config/constants');
 
 class MusicQueue {
   constructor(textChannel, voiceChannel) {
@@ -17,6 +18,7 @@ class MusicQueue {
     this.paused = false;
     this.autoPlay = false;
     this.autoPlayPosition = 1;
+    this.quality = AUDIO.DEFAULT_QUALITY;
   }
 
   addSong(song) {
@@ -59,31 +61,55 @@ class MusicQueue {
 
   async seek(seconds) {
     if (!this.player || this.songs.length === 0) return;
-    if (seconds < 0 || (this.songs[0] && seconds > this.songs[0].totalsec)) {
+
+    const currentSong = this.songs[0];
+    if (!currentSong) return;
+
+    // Validate seek position
+    if (seconds < 0 || seconds > currentSong.totalsec) {
       this.textChannel.send('Please enter a time within the length of the song!');
       return;
     }
+
+    // Check if song type supports seeking
+    if (currentSong.type === 'attachment') {
+      this.textChannel.send('⚠️ Seeking is not supported for uploaded files. Only YouTube videos support seeking.');
+      return;
+    }
+
+    // Stop current playback
     this.player.stop();
+
     try {
-      const stream = ytdl(this.songs[0].url, {
+      // Create new stream starting at the specified position
+      // The `begin` parameter makes ytdl start downloading from that timestamp,
+      // avoiding unnecessary data transfer
+      const qualitySetting = AUDIO.QUALITY_OPTIONS[this.quality] || AUDIO.QUALITY_OPTIONS[AUDIO.DEFAULT_QUALITY];
+      const stream = ytdl(currentSong.url, {
         filter: 'audioonly',
-        quality: 'highestaudio',
-        highWaterMark: 1 << 25,
+        quality: qualitySetting,
+        highWaterMark: AUDIO.HIGH_WATER_MARK,
         begin: seconds * 1000,
       }).on('error', err => {
-        console.error(err);
-        this.textChannel.send('Failed to seek.');
+        console.error('[Seek] Stream error:', err.message);
+        this.textChannel.send('Failed to seek. Please try again.').catch(() => {});
       });
+
       const resource = createAudioResource(stream, { inlineVolume: true });
-      const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : 0.2;
+
+      // Preserve current volume
+      const currentVolume = this.resource && this.resource.volume ? this.resource.volume.volume : AUDIO.DEFAULT_VOLUME;
       resource.volume.setVolume(currentVolume);
+
       this.resource = resource;
       this.player.play(resource);
+
+      // Update timestamp to match seek position
       this.starttimestamp = Date.now() - seconds * 1000;
       this.paused = false;
     } catch (err) {
-      console.error(err);
-      this.textChannel.send('Failed to seek.');
+      console.error('[Seek] Error:', err.message);
+      this.textChannel.send('Failed to seek. Please try again.').catch(() => {});
     }
   }
 }

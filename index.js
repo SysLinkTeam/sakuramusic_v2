@@ -1,499 +1,370 @@
+// Check for required dependencies
 try {
-    var { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ApplicationCommandOptionType, ActivityType, TextChannel, VoiceChannel, Guild, GuildMember, User } = require('discord.js');
-    var { joinVoiceChannel, createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
-    var ytdl = require('ytdl-core');
-    var ytpl = require('ytpl');
-    var playdl = require("play-dl")
-    var streamer = require('yt-dlp-wrap').default;
-    var os = require('os');
-    var cron = require('node-cron');
-    var events = require('events');
-    var fs = require('fs');
-    var path = require('path');
-    var { https } = require('follow-redirects');
-    var  stream  = require('stream');
+    require('discord.js');
 } catch (e) {
-    if (e.code !== 'MODULE_NOT_FOUND') {
-        throw e;
-    }
-    console.log("Installing dependencies...")
-    const { execSync } = require('child_process');
-    try {
-        execSync('npm install', { stdio: 'inherit' });
-        console.log("Dependencies installed. restarting...");
-        require('child_process').execSync('node index.js', { stdio: 'inherit' });
-        process.exit();
-    } catch (err) {
-        console.log("Failed to install dependencies.");
-        console.error(err);
+    if (e.code === 'MODULE_NOT_FOUND') {
+        console.error('ERROR: Required dependencies are not installed.');
+        console.error('Please run: npm install');
         process.exit(1);
     }
-
+    throw e;
 }
+
+const fs = require('fs');
+const path = require('path');
+const cron = require('node-cron');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
+require('dotenv').config();
+
+// Load configuration
+const { loadConfig } = require('./src/config/env');
+const config = loadConfig();
+
+// Load services
+const CacheManager = require('./src/services/cacheManager');
+const QueuePersistence = require('./src/services/queuePersistence');
+const YTDLPManager = require('./src/services/ytdlpManager');
+const { play } = require('./src/services/musicPlayer');
+
+// Load core modules
 const MusicQueue = require('./src/MusicQueue');
 const Song = require('./src/Song');
 const { toHms, parseTime } = require('./src/utils');
-const EventEmitter = events.EventEmitter;
-const ee = new EventEmitter();
-require('dotenv').config();
+const RateLimiter = require('./src/utils/RateLimiter');
+const { CACHE } = require('./src/config/constants');
+const { INFO, ERRORS } = require('./src/constants/messages');
+
 process.env['YTDL_NO_UPDATE'] = true;
 
-let cacheEnabled = true;
-let ramUsageReportEnabled = false;
+// Initialize managers with configuration
+const cacheManager = new CacheManager(config);
+const queuePersistence = new QueuePersistence();
+const ytdlpManager = new YTDLPManager();
+const rateLimiter = new RateLimiter(5, 60000); // 5 commands per 60 seconds
 
-    if (process.env.cacheEnabled == "false") {
-        cacheEnabled = false;
-        console.log("-------Cache is disabled-------")
-        console.log("Cache will not be saved")
-        console.log("Cache will not be loaded on startup")
-        console.log("It may increase response time and Network usage but it will reduce RAM usage")
-        console.log("If you want to enable cache, set cacheEnabled to true in .env")
-        console.log("-------------------------------")
+// Initialize cache
+cacheManager.initialize();
+
+// Initialize client and queue
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
+});
+const queue = new Map();
+
+// Debounce map for voice state updates (guildId -> timeout)
+const voiceStateDebounce = new Map();
+
+// Load commands
+const commands = new Map();
+let commandList = [];
+const commandFiles = fs.readdirSync(path.join(__dirname, 'src/Commands'))
+    .filter(file => file.endsWith('.js') && file !== 'BaseCommand.js');
+
+for (const file of commandFiles) {
+    const CommandClass = require(`./src/Commands/${file}`);
+    const command = new CommandClass();
+    commands.set(command.data.name, command);
+    commandList.push(command.data);
+}
+
+// Create context object (improved dependency injection)
+const context = {
+    queue,
+    MusicQueue,
+    Song,
+    parseTime,
+    toHms,
+    musicInfoCache: cacheManager.cache,
+    cacheEnabled: cacheManager.enabled,
+    client,
+    play: (guild, song, interaction = null, songcache = null) => {
+        return play(guild, song, queue, client, interaction, songcache);
     }
-    if (cacheEnabled) {
-        console.log("-------Cache is enabled-------")
-        console.log("Cache will be saved every 5 seconds")
-        console.log("Cache will be loaded on startup")
-        console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time and reduce Network usage")
-        if (process.env.ramUsageReportEnabled == "true") {
-            console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 5 seconds.")
-            ramUsageReportEnabled = true;
-        } else {
-            console.log("if you want to show RAM usage report, set ramUsageReportEnabled to true in .env")
-        }
-        console.log("If you want to disable cache, set cacheEnabled to false in .env")
-        console.log("-------------------------------")
+};
+
+// Initialize yt-dlp
+(async () => {
+    try {
+        await ytdlpManager.initialize();
+    } catch (error) {
+        console.error('Failed to initialize yt-dlp:', error);
     }
-    const replacer = (k, v) => {
-        if (v instanceof Map) {
-            return {
-                dataType: "Map",
-                value: [...v]
-            }
-        }
-        return v
+})();
+
+// Bot ready event
+client.once('ready', async () => {
+    console.log(`${client.user.username} is now online!`);
+    client.application.commands.set(commandList);
+
+    // Load cache
+    cacheManager.load();
+
+    // Load and restore queue
+    const rebootFLG = await queuePersistence.load(client, queue);
+
+    if (rebootFLG) {
+        await queuePersistence.restorePlayback(queue, context.play, client);
     }
-    const reviver = (k, v) => {
-        if (typeof v === "object" && v !== null) {
-            if (v.dataType === "Map") {
-                return new Map(v.value)
-            }
-        } else if (v === undefined || v === null) {
-            return new Map()
-        }
-        return v
-    }
-    let musicInfoCache = new Map();
-    let client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+});
 
-    const token = process.env.token
-    const queue = new Map();
+// Interaction handler with rate limiting and improved error handling
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
 
-    let rebootFLG = false;
-
-    const commands = new Map();
-    let commandList = [];
-    const commandFiles = fs.readdirSync(path.join(__dirname, 'src/Commands')).filter(file => file.endsWith('.js') && file !== 'BaseCommand.js');
-    for (const file of commandFiles) {
-        const CommandClass = require(`./src/Commands/${file}`);
-        const command = new CommandClass();
-        commands.set(command.data.name, command);
-        commandList.push(command.data);
-    }
-
-    const context = { queue, MusicQueue, Song, parseTime, toHms, musicInfoCache, cacheEnabled, client };
-
-    let yt_dlp_filename = "";
-
-    switch (process.platform) {
-        case "win32":
-            if (process.arch == "x64") {
-                yt_dlp_filename = "yt-dlp.exe";
-                break;
-            }
-            yt_dlp_filename = "yt-dlp_x86.exe";
-            break;
-        case "linux":
-            yt_dlp_filename = "yt-dlp";
-            break;
-        case "darwin":
-            yt_dlp_filename = "yt-dlp_macos";
-            break;
-        default:
-            console.log("Unsupported platform. Please use Windows, Linux or macOS.")
-            process.exit(1);
-    }
-
-    let userAgent = process.env.userAgent ? process.env.userAgent : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:68.0) Gecko/20100101 Firefox/68.0";
-    (async () => await (() => {
-        if (!fs.existsSync('./' + yt_dlp_filename)) {
-            return new Promise((resolve) => {
-                console.log("getting latest yt-dlp...")
-                https.get('https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest', { headers: { "User-Agent": userAgent } }, (res) => {
-                    let body = '';
-                    res.on('data', (chunk) => {
-                        body += chunk;
-                    });
-                    res.on('end', () => {
-                        let json = JSON.parse(body);
-                        console.log("downloading yt-dlp...")
-                        var options = {
-                            headers: {
-                                'User-Agent': userAgent,
-                                'Accept': 'application/octet-stream'
-                            }
-                        };
-                        https.get(json.assets.filter((asset) => asset.name == yt_dlp_filename)[0].url,options, (res) => {
-                            res.pipe(fs.createWriteStream('./' + yt_dlp_filename)).on('finish', () => {
-                                console.log("yt-dlp downloaded!")
-                                fs.chmodSync('./' + yt_dlp_filename, 0o755);
-                                fs.writeFileSync('./yt-dlp_version', 'utf8');
-                                console.log("yt-dlp version: " + json.tag_name);
-                                resolve();
-                            });
-                        }).on('error', (e) => {
-                            console.error(e);
-                        });
-                    });
-                }).on('error', (e) => {
-                    console.error(e);
-                });
-            })
-        } else {
-            let yt_dlp_version = fs.readFileSync('./yt-dlp_version', 'utf8');
-            console.log("yt-dlp version: " + yt_dlp_version);
-            console.log("yt-dlp is already downloaded!")
-            console.log("checking for updates...")
-            https.get('https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest', { headers: { "User-Agent": userAgent } }, (res) => {
-                let body = '';
-                res.on('data', (chunk) => {
-                    body += chunk;
-                });
-                res.on('end', () => {
-                    let json = JSON.parse(body);
-                    if (json.tag_name != yt_dlp_version) {
-                        console.log("updating yt-dlp...")
-                        var options = {
-                            headers: {
-                                'User-Agent': userAgent,
-                                'Accept': 'application/octet-stream'
-                            }
-                        };
-                        https.get(json.assets.filter((asset) => asset.name == yt_dlp_filename)[0].url,options, (res) => {
-                            res.pipe(fs.createWriteStream('./' + yt_dlp_filename)).on('finish', () => {
-                                console.log("yt-dlp updated!")
-                                fs.chmodSync('./' + yt_dlp_filename, 0o755);
-                                fs.writeFileSync('./yt-dlp_version', json.tag_name);
-                            });
-                        }).on('error', (e) => {
-                            console.error(e);
-                        });
-                    } else {
-                        console.log("yt-dlp is up to date!")
-                    }
-                });
-            }).on('error', (e) => {
-                console.error(e);
-            });
-        }
-    })())();
-
-    process.on('uncaughtException', err => {
-        console.error('Uncaught Exception:', err);
-        if (client && client.destroy) {
-            try {
-                client.destroy();
-            } catch (e) {
-                console.error('Failed to destroy client:', e);
-            }
-        }
-        process.exit(1);
-    });
-
-    client.once('ready', async () => {
-        console.log(`${client.user.username} is now online!`);
-        client.application.commands.set(commandList);
-
-        if (!fs.existsSync('./cache.json')) fs.writeFileSync('./cache.json', JSON.stringify(new Map(), replacer))
-        if (cacheEnabled) musicInfoCache = JSON.parse(fs.readFileSync('./cache.json', 'utf8'), reviver);
-
-        if (!fs.existsSync('./queue.json')) fs.writeFileSync('./queue.json', JSON.stringify(getQueueData()))
-        async function loadQueue() {
-            let queuedata = JSON.parse(fs.readFileSync('./queue.json', 'utf8'));
-            if (queuedata.length == 0) return new Map();
-            queuedata.forEach((value) => {
-                const queueContruct = new MusicQueue(
-                    client.channels.cache.get(value.textChannel),
-                    client.channels.cache.get(value.voiceChannel)
-                );
-                queueContruct.songs = value.songs;
-                queueContruct.playing = value.playing;
-                queueContruct.loop = value.loop;
-                queueContruct.queueloop = value.queueloop;
-                queueContruct.player = null;
-                queueContruct.resource = null;
-                queueContruct.paused = value.paused;
-                queueContruct.autoPlay = value.autoPlay;
-                queueContruct.autoPlayPosition = value.autoPlayPosition;
-                queueContruct.starttimestamp = value.starttimestamp;
-                if (queueContruct.songs.length == 0) return;
-                if (queueContruct.textChannel == null || queueContruct.voiceChannel == null) return;
-                queue.set(value.key, queueContruct);
-            });
-            rebootFLG = true;
-        }
-        await loadQueue();
-        if (queue.length != 0) rebootFLG = true;
-        if (rebootFLG) {
-            for (const [key, value] of queue) {
-                if (value.songs.length == 0) continue;
-                value.textChannel.send({ embeds: [new EmbedBuilder().setTitle("Sorry for the inconvenience...").setDescription("We are sorry that you had to restart the bot while using our service.\nWe are always working to fix bugs, add new features and improve stability.\nPlease be assured that we will be restarting soon, and that your queue and other data will be preserved after the restart.").setColor("#ff0000").setFooter({ text: "SakuraMusic v2", iconURL: client.user.displayAvatarURL() })] })
-                value.connection = await joinVoiceChannel({
-                    channelId: value.voiceChannel.id,
-                    guildId: value.voiceChannel.guild.id,
-                    adapterCreator: value.voiceChannel.guild.voiceAdapterCreator
-                });
-                play(value.voiceChannel.guild, value.songs[0])
-            }
-        }
-    });
-
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isCommand()) return;
-        await interaction.deferReply();
-        const command = commands.get(interaction.commandName);
-        if (!command) return;
+    // Rate limiting check
+    if (!rateLimiter.take(interaction.user.id)) {
+        const resetTime = Math.ceil(rateLimiter.getResetTime(interaction.user.id) / 1000);
         try {
-            await command.execute(interaction, context);
+            await interaction.reply({
+                content: ERRORS.RATE_LIMIT_EXCEEDED(resetTime),
+                ephemeral: true
+            });
         } catch (error) {
-            console.error(error);
-            interaction.followUp('There was an error executing that command!');
+            console.error('[Rate Limit] Failed to send rate limit message:', error.message);
         }
-    });
+        return;
+    }
 
-    client.on('voiceStateUpdate', async (oldState, newState) => {
-        if (!oldState.member.user.bot && oldState.channelId != null && newState.channelId === null && oldState.channel.members.size === 1) {
-            const serverQueue = queue.get(oldState.guild.id);
-            if (!serverQueue) return;
-            serverQueue.songs = [];
-            serverQueue.autoPlay = false;
-            serverQueue.player.stop();
-            serverQueue.connection.destroy();
-            serverQueue.textChannel.send('Everyone left the voice channel, so I left the voice channel as well!');
+    // Defer reply with timeout protection
+    try {
+        await interaction.deferReply();
+    } catch (error) {
+        console.error(`[Interaction] Failed to defer reply for ${interaction.commandName}:`, error.message);
+        return; // Interaction already expired or responded
+    }
+
+    const command = commands.get(interaction.commandName);
+    if (!command) return;
+
+    // Execute command with timeout and comprehensive error handling
+    try {
+        // 14 second timeout (Discord allows 15s total, leaving 1s margin)
+        await Promise.race([
+            command.execute(interaction, context),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Command timeout')), 14000)
+            )
+        ]);
+    } catch (error) {
+        // Log error with context
+        console.error(`[Command Error] Command: ${interaction.commandName}, User: ${interaction.user.id}, Guild: ${interaction.guildId || 'DM'}`);
+        console.error(`[Command Error] Message: ${error.message}`);
+
+        // Send user-friendly error message
+        try {
+            if (interaction.deferred && !interaction.replied) {
+                await interaction.followUp({
+                    content: ERRORS.COMMAND_EXECUTION_ERROR,
+                    ephemeral: true
+                });
+            }
+        } catch (followUpError) {
+            console.error('[Command Error] Failed to send error message:', followUpError.message);
         }
-    });
+    }
+});
 
+// Voice state update handler with debounce
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    try {
+        const guildId = oldState.guild.id;
 
-    async function play(guild, song, interaction = null, songcache = null) {
-        const serverQueue = queue.get(guild.id);
+        // Check if user left channel
+        if (!oldState.member || oldState.member.user.bot) return;
+        if (oldState.channelId == null || newState.channelId !== null) return;
+        if (!oldState.channel) return;
+
+        const serverQueue = queue.get(guildId);
         if (!serverQueue) return;
 
-        if (!song) {
-            if (serverQueue.autoPlay === true) {
-                serverQueue.textChannel.send('Auto play is enabled, so I will search next song for you!');
-                const title = songcache.title.slice(0, songcache.title.length / 2);
-                let yt_info = await playdl.search(title, {
-                    limit: 10
-                })
-                if (yt_info.length != 0) {
-                    yt_info = pickNextSong(yt_info, songcache);
-                    if (yt_info == null) {
-                        serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
-                        if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
-                        queue.delete(guild.id);
-                        return;
-                    }
-                    let songInfo = await ytdl.getInfo(yt_info.url).catch(async error => {
-                        if (error) {
-                            console.log(error);
-                            serverQueue.textChannel.send('I find the next song, but I cannot play it, so I will stop playing music.\nPlease try again later.');
-                            if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
-                            queue.delete(guild.id);
-                            return;
-                        }
+        // Clear any existing debounce timeout
+        if (voiceStateDebounce.has(guildId)) {
+            clearTimeout(voiceStateDebounce.get(guildId));
+        }
+
+        // Set debounce timeout (5 seconds)
+        const timeout = setTimeout(async () => {
+            try {
+                // Re-check if bot is still alone after delay
+                const voiceChannel = client.channels.cache.get(serverQueue.voiceChannel.id);
+                if (!voiceChannel || voiceChannel.members.size !== 1) {
+                    voiceStateDebounce.delete(guildId);
+                    return;
+                }
+
+                console.log(`[Voice] Everyone left in guild ${guildId}, disconnecting...`);
+
+                // Stop playback and cleanup
+                if (serverQueue.player) {
+                    serverQueue.songs = [];
+                    serverQueue.autoPlay = false;
+                    serverQueue.player.stop();
+                }
+
+                if (serverQueue.connection) {
+                    serverQueue.connection.destroy();
+                }
+
+                if (serverQueue.textChannel) {
+                    await serverQueue.textChannel.send(INFO.EVERYONE_LEFT).catch(err => {
+                        console.error(`[Voice] Failed to send leave message:`, err.message);
                     });
-                    if (songInfo) {
-                        song = new Song({
-            title: songInfo.videoDetails.title,
-            url: songInfo.videoDetails.video_url,
-            totalsec: songInfo.videoDetails.lengthSeconds,
-            viewcount: songInfo.videoDetails.viewCount,
-            author: {
-                name: songInfo.videoDetails.author.name,
-                url: songInfo.videoDetails.author.channel_url,
-                subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                verified: songInfo.videoDetails.author.verified
-            },
-            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-        });
-                        serverQueue.songs.push(song);
-                        serverQueue.autoPlayPosition++;
-                        return play(guild, serverQueue.songs[0], interaction);
-                    }
-                } else {
-                    serverQueue.textChannel.send('I cannot find the next song, so I will stop playing music');
-
                 }
+
+                voiceStateDebounce.delete(guildId);
+            } catch (error) {
+                console.error(`[Voice] Error in debounced disconnect for guild ${guildId}:`, error.message);
+                voiceStateDebounce.delete(guildId);
             }
-            serverQueue.textChannel.send('Stop playing music because there is no song in the queue!');
-            if (getVoiceConnection(guild.id)) serverQueue.connection.destroy();
-            queue.delete(guild.id);
-            return;
-        }
+        }, 5000);
 
-        if (song.type === 'attachment' && song.expiresAt && Date.now() > song.expiresAt) {
-            serverQueue.textChannel.send('Attachment link expired, skipping.');
-            serverQueue.songs.shift();
-            return play(guild, serverQueue.songs[0], interaction);
-        }
-
-        let stream_ytdl;
-        const player = createAudioPlayer({
-            behaviors: {
-                noSubscriber: NoSubscriberBehavior.Stop,
-            },
-        });
-
-        let resource;
-        if (song.type === 'attachment') {
-            const streamAttachment = await new Promise((resolve, reject) => {
-                https.get(song.url, res => resolve(res)).on('error', reject);
-            });
-            resource = createAudioResource(streamAttachment, { inlineVolume: true });
-        } else {
-            stream_ytdl = ytdl(song.url, {
-                filter: 'audioonly',
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25
-            });
-            resource = createAudioResource(stream_ytdl, { inlineVolume: true, inputType: stream.type });
-        }
-
-        resource.volume.setVolume(0.2);
-        await player.play(resource);
-        serverQueue.player = player;
-        serverQueue.resource = resource;
-        serverQueue.connection.subscribe(player);
-
-        player.on(AudioPlayerStatus.Idle, () => {
-            const serverQueue = queue.get(guild.id);
-            if (serverQueue.loop === false) {
-                if (serverQueue.queueloop === true) {
-                    serverQueue.songs.push(serverQueue.songs[0]);
-                }
-                songcache = serverQueue.songs.shift();
-                if (songcache) serverQueue.history.push(songcache);
-            }
-
-            play(guild, serverQueue.songs[0], interaction, songcache);
-        }).on('error', error => {
-            console.error(error)
-        });
-        const embed = {
-            "title": "Now Playing...♬",
-            "description": `[${song.title}](${song.url})`,
-            "color": Math.floor(Math.random() * 16777214) + 1,
-            "thumbnail": {
-                "url": song.thumbnail
-            },
-            "footer": {
-                text: "SakuraMusic V2",
-                iconURL: client.user.displayAvatarURL(),
-            },
-            "author": {
-                "name": song.author.name,
-                "url": song.author.url
-            },
-            "fields": [{
-                "name": "channel",
-                "value": song.author.name
-            }, {
-                "name": "Music length",
-                "value": toHms(song.totalsec),
-                "inline": true
-            }, {
-                "name": "viewCount",
-                "value": song.viewcount,
-                "inline": true
-            }, {
-                "name": "Channel:subscriber",
-                "value": song.author.subscriber_count,
-                "inline": true
-            }, {
-                "name": "Channel:verified",
-                "value": song.author.verified,
-                "inline": true
-            }]
-        };
-        serverQueue.textChannel.send({ embeds: [embed] });
-        serverQueue.starttimestamp = Date.now();
+        voiceStateDebounce.set(guildId, timeout);
+    } catch (error) {
+        console.error('[Voice] Error in voiceStateUpdate handler:', error.message);
     }
+});
 
-    context.play = play;
-
-    function pickNextSong(array, playedsong) {
-        if (array.length == 0 || array.length == 1) return null;
-        array = array[Math.floor(Math.random() * array.length)]
-        if (array.url == playedsong.url) return pickNextSong(array, playedsong);
-        return array;
-    }
-
-    cron.schedule('*/5 * * * * *', async () => {
-        client.user.setPresence({
-            activities: [{
-                name: ` /help | ${queue.size} vc & ${client.guilds.cache.size} servers`,
-                type: ActivityType.Streaming,
-            }]
-        });
-        fs.writeFile('./queue.json', JSON.stringify(getQueueData()), (err) => { if (err) console.error(err) });
-        if (cacheEnabled === false) return;
-        fs.writeFile('./cache.json', JSON.stringify(musicInfoCache, replacer), (err) => { if (err) console.error(err) });
-        let totalmemory = os.totalmem()
-        let usedmemory = os.totalmem() - os.freemem()
-        let ramUsage = process.memoryUsage().heapUsed / 1024 / 1024;
-        if (ramUsageReportEnabled) {
-            console.log("--------------------ram usage report--------------------")
-            console.log("time: " + new Date().toLocaleString())
-            console.log(`Total memory(machine): ${Math.floor(totalmemory / 1024 / 1024 / 1024)} GB`)
-            console.log(`Used memory(machine): ${Math.floor(usedmemory / 1024 / 1024 / 1024)} GB`)
-            console.log(`RAM Used Percentage(machine): ${Math.floor((usedmemory / totalmemory) * 100)}%`)
-            console.log(`RAM usage(SakuraMusic v2): ${Math.floor(ramUsage)} MB`)
-            console.log("--------------------ram usage report--------------------")
-        }
-        if (usedmemory / totalmemory > 0.8) {
-            musicInfoCache = new Map();
-            console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.error("Cleared cache because of memory usage being too high.")
-            console.error(`Total memory: ${Math.floor(totalmemory / 1024 / 1024 / 1024)} GB`)
-            console.error(`Used memory: ${Math.floor(usedmemory / 1024 / 1024 / 1024)} GB`)
-            console.error(`Percentage: ${Math.floor((usedmemory / totalmemory) * 100)}%`)
-            console.error(`Caching has been disabled.`)
-            console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            cacheEnabled = false;
-        }
+// Periodic tasks (cache/queue saving, presence update, memory check)
+cron.schedule(CACHE.AUTO_SAVE_INTERVAL, async () => {
+    // Update bot presence
+    client.user.setPresence({
+        activities: [{
+            name: ` /help | ${queue.size} vc & ${client.guilds.cache.size} servers`,
+            type: ActivityType.Streaming,
+        }]
     });
 
-    function getQueueData() {
-        let data = [];
-        var i = 0;
-        queue.forEach((value, key) => {
-            data[i] = {};
-            data[i].key = key;
-            data[i].textChannel = value.textChannel.id;
-            data[i].voiceChannel = value.voiceChannel.id;
-            data[i].songs = value.songs;
-            data[i].playing = value.playing;
-            data[i].loop = value.loop;
-            data[i].queueloop = value.queueloop;
-            data[i].starttimestamp = value.starttimestamp;
-            data[i].autoPlay = value.autoPlay;
-            data[i].autoPlayPosition = value.autoPlayPosition;
-            data[i].paused = value.paused;
-            data[i].volume = value.resource && value.resource.volume ? value.resource.volume.volume : 0.2;
-            i++;
-        });
-        return data;
+    // Save queue
+    queuePersistence.save(queue);
+
+    // Save cache
+    cacheManager.save();
+
+    // Report RAM usage if enabled
+    cacheManager.reportRAMUsage();
+
+    // Check memory and clear cache if needed
+    cacheManager.checkMemoryAndClear();
+
+    // Update context if cache was disabled
+    context.cacheEnabled = cacheManager.enabled;
+});
+
+// Cleanup expired cache entries every 6 hours
+cron.schedule(CACHE.CLEANUP_INTERVAL, () => {
+    console.log('[Cron] Running cache cleanup...');
+    cacheManager.cleanExpired();
+});
+
+// Login with token validation
+const token = process.env.token;
+
+if (!token || typeof token !== 'string' || token.trim().length === 0) {
+    console.error('ERROR: Discord bot token is missing or invalid.');
+    console.error('Please set the "token" variable in your .env file.');
+    console.error('Example: token=YOUR_BOT_TOKEN_HERE');
+    process.exit(1);
+}
+
+// Basic token format validation (Discord tokens are typically 59-72 characters)
+if (token.length < 50) {
+    console.error('ERROR: Discord bot token appears to be invalid (too short).');
+    console.error('Please check your .env file and ensure the token is correct.');
+    process.exit(1);
+}
+
+client.login(token).catch(error => {
+    console.error('ERROR: Failed to login to Discord.');
+    console.error('This usually means your bot token is invalid.');
+    console.error('Error details:', error.message);
+    process.exit(1);
+});
+
+// ================================
+// Graceful Shutdown Handlers
+// ================================
+
+let isShuttingDown = false;
+
+/**
+ * Gracefully shutdown the bot
+ * @param {string} signal - Signal name (SIGTERM, SIGINT, etc.)
+ */
+async function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    console.log(`\n[Shutdown] ${signal} received. Starting graceful shutdown...`);
+
+    try {
+        // 1. Stop accepting new commands
+        console.log('[Shutdown] Removing command listeners...');
+        client.removeAllListeners('interactionCreate');
+
+        // 2. Save all queue data
+        console.log('[Shutdown] Saving queue data...');
+        queuePersistence.save(queue);
+
+        // 3. Save cache data
+        console.log('[Shutdown] Saving cache data...');
+        cacheManager.save();
+
+        // 4. Disconnect from all voice channels
+        console.log('[Shutdown] Disconnecting from voice channels...');
+        for (const [guildId, serverQueue] of queue) {
+            try {
+                if (serverQueue.player) {
+                    serverQueue.player.stop();
+                }
+                if (serverQueue.connection) {
+                    serverQueue.connection.destroy();
+                }
+            } catch (error) {
+                console.error(`[Shutdown] Error disconnecting from guild ${guildId}:`, error.message);
+            }
+        }
+
+        // 5. Clear cron jobs
+        console.log('[Shutdown] Stopping cron jobs...');
+        cron.getTasks().forEach(task => task.stop());
+
+        // 6. Disconnect from Discord (with timeout)
+        console.log('[Shutdown] Logging out from Discord...');
+        await Promise.race([
+            client.destroy(),
+            new Promise(resolve => setTimeout(resolve, 5000))
+        ]);
+
+        console.log('[Shutdown] Graceful shutdown completed successfully');
+        process.exit(0);
+    } catch (error) {
+        console.error('[Shutdown] Error during graceful shutdown:', error);
+        process.exit(1);
+    }
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions with graceful shutdown
+process.on('uncaughtException', async (error) => {
+    console.error('[FATAL] Uncaught Exception:', error);
+
+    try {
+        // Try to save data before exiting
+        queuePersistence.save(queue);
+        cacheManager.save();
+    } catch (saveError) {
+        console.error('[FATAL] Failed to save data during crash:', saveError);
     }
 
+    process.exit(1);
+});
 
-    client.login(token);
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[ERROR] Unhandled Promise Rejection at:', promise);
+    console.error('[ERROR] Reason:', reason);
+    // Don't exit on unhandled rejection, just log it
+});

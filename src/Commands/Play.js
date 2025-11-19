@@ -4,6 +4,41 @@ const { joinVoiceChannel } = require('@discordjs/voice');
 const ytpl = require('ytpl');
 const playdl = require('play-dl');
 const ytdl = require('ytdl-core');
+const { ERRORS, INFO } = require('../constants/messages');
+const { ATTACHMENT, PLAYLIST } = require('../config/constants');
+const { isValidYouTubeURL, sanitizeYouTubeURL, getYouTubeVideoId } = require('../validators');
+const { setupVoiceConnectionHandlers } = require('../utils/voiceConnectionHelper');
+
+/**
+ * Get cached song info using video ID (with fallback to full URL for backward compatibility)
+ * @param {Map} cache - Cache map
+ * @param {string} url - YouTube URL
+ * @returns {*} Cached song or undefined
+ */
+function getCachedSong(cache, url) {
+    const videoId = getYouTubeVideoId(url);
+    if (videoId && cache.has(videoId)) {
+        return cache.get(videoId);
+    }
+    // Fallback to full URL for backward compatibility
+    return cache.get(url);
+}
+
+/**
+ * Set cached song info using video ID
+ * @param {Map} cache - Cache map
+ * @param {string} url - YouTube URL
+ * @param {*} value - Song data to cache
+ */
+function setCachedSong(cache, url, value) {
+    const videoId = getYouTubeVideoId(url);
+    if (videoId) {
+        cache.set(videoId, value);
+    } else {
+        // Fallback to full URL if video ID extraction fails
+        cache.set(url, value);
+    }
+}
 
 class Play extends BaseCommand {
     constructor() {
@@ -56,18 +91,18 @@ class Play extends BaseCommand {
         const { queue, MusicQueue, Song, musicInfoCache, cacheEnabled } = context;
 
         const voiceChannel = interaction.member.voice.channel;
-        if (!voiceChannel) return interaction.followUp('You need to be in a voice channel to play music!');
+        if (!voiceChannel) return interaction.followUp(ERRORS.NOT_IN_VOICE_CHANNEL);
 
         const permissions = voiceChannel.permissionsFor(interaction.client.user);
         if (!permissions.has(PermissionFlagsBits.Connect) || !permissions.has(PermissionFlagsBits.Speak)) {
-            return interaction.followUp("I need the permissions to join and speak in your voice channel!");
+            return interaction.followUp(ERRORS.BOT_NO_PERMISSION);
         }
 
         let serverQueue = queue.get(interaction.guild.id);
         let url = interaction.options.getString('video_info');
         const attachment = interaction.options.getAttachment('file');
         if (!url && !attachment) {
-            return interaction.followUp('You need to provide a URL/search query or attach an audio file.');
+            return interaction.followUp(ERRORS.NEED_URL_OR_FILE);
         }
 
         if (attachment) {
@@ -79,7 +114,7 @@ class Play extends BaseCommand {
                 author: { name: interaction.user.username, url: null },
                 thumbnail: interaction.user.displayAvatarURL(),
                 type: 'attachment',
-                expiresAt: Date.now() + 7200000
+                expiresAt: Date.now() + ATTACHMENT.EXPIRY_TIME
             });
 
             if (!serverQueue) {
@@ -92,69 +127,101 @@ class Play extends BaseCommand {
                         guildId: voiceChannel.guild.id,
                         adapterCreator: voiceChannel.guild.voiceAdapterCreator
                     });
+                    setupVoiceConnectionHandlers(connection, interaction.guild.id, queue);
                     queueContruct.connection = connection;
                     context.play(interaction.guild, queueContruct.songs[0], interaction);
                 } catch (err) {
-                    console.log(err);
+                    console.error(err);
                     queue.delete(interaction.guild.id);
-                    return interaction.followUp(err);
+                    return interaction.followUp(err.message || ERRORS.COMMAND_EXECUTION_ERROR);
                 }
             } else {
                 serverQueue.songs.push(song);
             }
-            return interaction.followUp(`${song.title} has been added to the queue!`);
+            return interaction.followUp(INFO.SONG_ADDED(song.title));
         }
 
         const musiclist = [];
         let totalTracks = 1;
+
+        // Handle playlists
         if (url.includes('list=') && !url.includes('watch?v=')) {
-            const playlist = await ytpl(url, { limit: Infinity }).catch(error => {
-                console.log(error);
-                interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a Youtube URL?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+            // Validate URL before processing
+            if (!isValidYouTubeURL(url)) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            const sanitizedUrl = sanitizeYouTubeURL(url);
+            if (!sanitizedUrl) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            // Fetch playlist with size limit to prevent DoS
+            const playlist = await ytpl(sanitizedUrl, { limit: PLAYLIST.MAX_SIZE }).catch(error => {
+                console.error(error);
+                interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
             });
             if (!playlist) return;
-            musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
-            totalTracks = playlist.items.length;
+
+            // Check if playlist exceeds max size
+            if (playlist.items.length > PLAYLIST.MAX_SIZE) {
+                return interaction.followUp(ERRORS.PLAYLIST_TOO_LARGE(PLAYLIST.MAX_SIZE));
+            }
+
+            // Validate and sanitize each URL in the playlist
+            for (const item of playlist.items) {
+                const itemUrl = item.url.substring(0, item.url.indexOf("&list="));
+                if (isValidYouTubeURL(itemUrl)) {
+                    musiclist.push(itemUrl);
+                }
+            }
+            totalTracks = musiclist.length;
         } else {
+            // Handle single video or search query
             let errorFLG = false;
+
+            // If it's not a YouTube URL, treat it as a search query
             if (!url.includes('youtube.com') && !url.includes('youtu.be/')) {
                 const yt_info = await playdl.search(url, { limit: 1 }).catch(async error => {
                     errorFLG = true;
-                    return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                    return interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 });
                 if (errorFLG) return;
-                if (yt_info.length == 0) return interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                if (yt_info.length == 0) return interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 url = yt_info[0].url;
             }
-            musiclist.push(url);
+
+            // Validate the final URL
+            if (!isValidYouTubeURL(url)) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            const sanitizedUrl = sanitizeYouTubeURL(url);
+            if (!sanitizedUrl) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            musiclist.push(sanitizedUrl);
         }
 
         let song;
-        if (!musicInfoCache.has(musiclist[0])) {
+        const firstUrl = musiclist[0];
+        const cachedSong = getCachedSong(musicInfoCache, firstUrl);
+
+        if (!cachedSong) {
             const songInfo = await ytdl.getInfo(musiclist.shift()).catch(async error => {
                 console.error(error);
-                await interaction.followUp("Oops, there seems to have been an error.\nPlease check the following points.\n*Is the URL correct?\n*Are you using a URL other than Youtube?\n*Is the URL shortened? \nIf the problem still persists, please wait a while and try again.");
+                await interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 return null;
             });
             if (!songInfo) {
                 return;
             }
-            song = new Song({
-                title: songInfo.videoDetails.title,
-                url: songInfo.videoDetails.video_url,
-                totalsec: songInfo.videoDetails.lengthSeconds,
-                viewcount: songInfo.videoDetails.viewCount,
-                author: {
-                    name: songInfo.videoDetails.author.name,
-                    url: songInfo.videoDetails.author.channel_url,
-                    subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                    verified: songInfo.videoDetails.author.verified
-                },
-                thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-            });
-            if (cacheEnabled) musicInfoCache.set(songInfo.videoDetails.video_url, song);
+            song = Song.fromYouTubeInfo(songInfo);
+            if (cacheEnabled) setCachedSong(musicInfoCache, songInfo.videoDetails.video_url, song);
         } else {
-            song = musicInfoCache.get(musiclist.shift());
+            musiclist.shift(); // Remove from list
+            song = cachedSong;
         }
 
         if (!serverQueue) {
@@ -167,74 +234,97 @@ class Play extends BaseCommand {
                     guildId: voiceChannel.guild.id,
                     adapterCreator: voiceChannel.guild.voiceAdapterCreator
                 });
+                setupVoiceConnectionHandlers(connection, interaction.guild.id, queue);
                 queueContruct.connection = connection;
                 context.play(interaction.guild, queueContruct.songs[0], interaction);
             } catch (err) {
-                console.log(err);
+                console.error(err);
                 queue.delete(interaction.guild.id);
-                return interaction.followUp(err);
+                return interaction.followUp(err.message || ERRORS.COMMAND_EXECUTION_ERROR);
             }
         } else {
             serverQueue.songs.push(song);
         }
 
-        if (musiclist.length === 0) return interaction.followUp(`${song.title} has been added to the queue!`);
-        interaction.followUp(`We are now adding ${musiclist.length} songs to the queue.\nPleas wait a moment...\nIt may take a while to add songs to the queue.`);
+        if (musiclist.length === 0) return interaction.followUp(INFO.SONG_ADDED(song.title));
+        interaction.followUp(INFO.BULK_SONGS_ADDING(musiclist.length));
 
         const remaining = musiclist.length;
         const total = totalTracks;
 
-        setImmediate(async () => {
-            let processed = 1;
-            const progressEmbeds = [];
-            const batchEmbeds = [];
-            const batchLimit = total < 300 ? Infinity : total < 1000 ? 5 : 10;
+        // Process playlist in parallel with cancellation support
+        (async () => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
-            for (const url of musiclist) {
-                let info;
-                if (musicInfoCache.has(url)) {
-                    info = musicInfoCache.get(url);
-                } else {
-                    const songInfo = await ytdl.getInfo(url).catch(() => null);
-                    if (songInfo) {
-                        info = new Song({
-                            title: songInfo.videoDetails.title,
-                            url: songInfo.videoDetails.video_url,
-                            totalsec: songInfo.videoDetails.lengthSeconds,
-                            viewcount: songInfo.videoDetails.viewCount,
-                            author: {
-                                name: songInfo.videoDetails.author.name,
-                                url: songInfo.videoDetails.author.channel_url,
-                                subscriber_count: songInfo.videoDetails.author.subscriber_count,
-                                verified: songInfo.videoDetails.author.verified
-                            },
-                            thumbnail: songInfo.videoDetails.thumbnails[Object.keys(songInfo.videoDetails.thumbnails).length - 1].url
-                        });
-                        if (cacheEnabled) musicInfoCache.set(info.url, info);
+            try {
+                let processed = 1; // First song already processed
+                let failedCount = 0;
+                const PARALLEL_BATCH_SIZE = 5; // Process 5 songs at a time
+
+                // Dynamic progress report interval based on playlist size
+                const reportInterval = total < 50 ? 10 : total < 200 ? 25 : PLAYLIST.PROGRESS_REPORT_INTERVAL;
+
+                for (let i = 0; i < musiclist.length; i += PARALLEL_BATCH_SIZE) {
+                    if (controller.signal.aborted) {
+                        interaction.channel.send(`Playlist processing cancelled. Added ${processed - 1 - failedCount} songs.`);
+                        break;
+                    }
+
+                    const batch = musiclist.slice(i, i + PARALLEL_BATCH_SIZE);
+
+                    // Process batch in parallel
+                    const results = await Promise.allSettled(
+                        batch.map(async (url) => {
+                            // Check cache first using video ID
+                            const cached = getCachedSong(musicInfoCache, url);
+                            if (cached) {
+                                return cached;
+                            }
+
+                            // Fetch from YouTube
+                            const songInfo = await ytdl.getInfo(url);
+                            const info = Song.fromYouTubeInfo(songInfo);
+                            if (cacheEnabled) setCachedSong(musicInfoCache, info.url, info);
+                            return info;
+                        })
+                    );
+
+                    // Add successful results to queue
+                    for (const result of results) {
+                        if (result.status === 'fulfilled' && result.value) {
+                            serverQueue.songs.push(result.value);
+                        } else {
+                            failedCount++;
+                            console.error(`[Playlist] Failed to fetch song:`, result.reason?.message);
+                        }
+                    }
+
+                    processed += batch.length;
+
+                    // Report progress
+                    if (processed % reportInterval === 0 || processed >= total || i === 0) {
+                        const percent = Math.floor((processed / total) * 100);
+                        const successCount = processed - 1 - failedCount;
+                        const embed = new EmbedBuilder()
+                            .setDescription(`Adding playlist... ${successCount}/${total} (${percent}%)${failedCount > 0 ? ` | ${failedCount} failed` : ''}`);
+                        await interaction.channel.send({ embeds: [embed] });
                     }
                 }
-                if (info) serverQueue.songs.push(info);
-                processed++;
-                if (processed % 100 === 0 || processed === total) {
-                    const embed = new EmbedBuilder().setDescription(`Adding playlist... (${processed}/${total})`);
-                    progressEmbeds.push(embed);
-                    batchEmbeds.push(embed);
-                    if (total >= 300 && (batchEmbeds.length === batchLimit || processed === total)) {
-                        await interaction.channel.send({ embeds: batchEmbeds });
-                        batchEmbeds.length = 0;
-                    }
-                }
-                await new Promise(r => setImmediate(r));
-            }
 
-            if (total < 300 && progressEmbeds.length) {
-                await interaction.channel.send({ embeds: progressEmbeds });
-            } else if (batchEmbeds.length) {
-                await interaction.channel.send({ embeds: batchEmbeds });
-            }
+                clearTimeout(timeout);
 
-            interaction.channel.send(`Added ${remaining} songs to the queue!`);
-        });
+                // Final report
+                const successCount = processed - 1 - failedCount;
+                const message = `✅ Added ${successCount} songs to the queue!${failedCount > 0 ? ` (${failedCount} songs failed to load)` : ''}`;
+                interaction.channel.send(message);
+
+            } catch (error) {
+                clearTimeout(timeout);
+                console.error('[Playlist] Error processing playlist:', error);
+                interaction.channel.send(`Error processing playlist. Some songs may not have been added.`);
+            }
+        })();
     }
 }
 

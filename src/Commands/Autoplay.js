@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Autoplay extends BaseCommand {
     constructor() {
@@ -19,15 +21,15 @@ class Autoplay extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        if (!interaction.member.voice.channel) return interaction.followUp('You have to be in a voice channel to enable/disable autoplay!');
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('Play a song first!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_IN_QUEUE);
+        if (error) return interaction.followUp(error);
+
         if (serverQueue.autoPlay === false) {
             serverQueue.autoPlay = true;
-            interaction.followUp('Autoplay is enabled!');
+            interaction.followUp(INFO.AUTOPLAY_ENABLED);
         } else {
             serverQueue.autoPlay = false;
-            interaction.followUp('Autoplay is disabled!');
+            interaction.followUp(INFO.AUTOPLAY_DISABLED);
         }
     }
 }

@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType, ApplicationCommandOptionType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Remove extends BaseCommand {
     constructor() {
@@ -27,7 +29,7 @@ class Remove extends BaseCommand {
                         ja: '番号',
                         ko: '인덱스',
                     },
-                    type: ApplicationCommandOptionType.String,
+                    type: ApplicationCommandOptionType.Integer,
                     required: true,
                 },
             ],
@@ -35,12 +37,16 @@ class Remove extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could remove!');
-        if (!interaction.options.getString('songnumber')) return interaction.followUp('Please enter a song number!');
-        if (interaction.options.getString('songnumber') > serverQueue.songs.length || interaction.options.getString('songnumber') < 1) return interaction.followUp('Please enter a valid song number!');
-        serverQueue.songs.splice(interaction.options.getString('songnumber') - 1, 1);
-        interaction.followUp(`I removed the song number: **${interaction.options.getString('songnumber')}**`);
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_REMOVE);
+        if (error) return interaction.followUp(error);
+
+        const songNumber = interaction.options.getInteger('songnumber');
+        if (songNumber > serverQueue.songs.length || songNumber < 1) {
+            return interaction.followUp(ERRORS.INVALID_SONG_NUMBER);
+        }
+
+        serverQueue.songs.splice(songNumber - 1, 1);
+        interaction.followUp(INFO.SONG_REMOVED(songNumber));
     }
 }
 module.exports = Remove;

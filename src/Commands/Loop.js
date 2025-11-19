@@ -1,5 +1,7 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, INFO } = require('../constants/messages');
 
 class Loop extends BaseCommand {
     constructor() {
@@ -19,14 +21,15 @@ class Loop extends BaseCommand {
     }
 
     async execute(interaction, { queue }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could set up loop mode!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_LOOP);
+        if (error) return interaction.followUp(error);
+
         if (serverQueue.loop === false) {
             serverQueue.loop = true;
-            interaction.followUp('Looping the queue!');
+            interaction.followUp(INFO.LOOP_ENABLED);
         } else {
             serverQueue.loop = false;
-            interaction.followUp('Stopped looping the queue!');
+            interaction.followUp(INFO.LOOP_DISABLED);
         }
     }
 }

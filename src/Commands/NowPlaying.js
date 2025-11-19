@@ -1,6 +1,9 @@
 const BaseCommand = require('./BaseCommand');
 const { ApplicationCommandType } = require('discord.js');
-const { toHms } = require('../utils');
+const { toHms, formatNumber } = require('../utils');
+const { validateMusicCommand } = require('../validators');
+const { ERRORS, BOT_NAME } = require('../constants/messages');
+const { QUEUE } = require('../config/constants');
 
 class NowPlaying extends BaseCommand {
     constructor() {
@@ -20,17 +23,22 @@ class NowPlaying extends BaseCommand {
     }
 
     async execute(interaction, { queue, client }) {
-        const serverQueue = queue.get(interaction.guild.id);
-        if (!serverQueue) return interaction.followUp('There is no song that I could tell you about the song you are playing!');
+        const { error, serverQueue } = validateMusicCommand(interaction, queue, ERRORS.NO_SONG_TO_SHOW);
+        if (error) return interaction.followUp(error);
+
+        if (!serverQueue.resource || !serverQueue.resource.playbackDuration) {
+            return interaction.followUp(ERRORS.NO_SONG_PLAYING);
+        }
+
         const playsec = Math.floor(serverQueue.resource.playbackDuration / 1000);
         const playtimetext = toHms(playsec);
         const musicplaytimetext = toHms(serverQueue.songs[0].totalsec);
         const getprogress = (nowsec, allsec) => {
-            const oneblockamount = allsec / 20;
+            const oneblockamount = allsec / QUEUE.PROGRESS_BAR_BLOCKS;
             const nowblock = Math.floor(nowsec / oneblockamount);
             const playblock = '■';
             const noplayblock = '□';
-            return '[' + playblock.repeat(((nowblock - 1) < 0) ? 0 : nowblock - 1) + '☆' + noplayblock.repeat(20 - nowblock) + ']';
+            return '[' + playblock.repeat(((nowblock - 1) < 0) ? 0 : nowblock - 1) + '☆' + noplayblock.repeat(QUEUE.PROGRESS_BAR_BLOCKS - nowblock) + ']';
         };
         const nowprogresstext = getprogress(playsec, serverQueue.songs[0].totalsec);
         const embed = {
@@ -39,7 +47,7 @@ class NowPlaying extends BaseCommand {
             color: Math.floor(Math.random() * 16777214) + 1,
             thumbnail: { url: serverQueue.songs[0].thumbnail },
             footer: {
-                text: 'SakuraMusic V2',
+                text: BOT_NAME,
                 iconURL: client.user.displayAvatarURL(),
             },
             author: {
@@ -47,13 +55,13 @@ class NowPlaying extends BaseCommand {
                 url: serverQueue.songs[0].author.url,
             },
             fields: [
-                { name: 'channel', value: serverQueue.songs[0].author.name },
+                { name: 'Channel', value: serverQueue.songs[0].author.name },
                 { name: 'Play time', value: playtimetext, inline: true },
                 { name: 'Music length', value: musicplaytimetext, inline: true },
                 { name: 'Progress', value: nowprogresstext },
-                { name: 'viewCount', value: serverQueue.songs[0].viewcount, inline: true },
-                { name: 'Channel:subscriber', value: serverQueue.songs[0].author.subscriber_count, inline: true },
-                { name: 'Channel:verified', value: serverQueue.songs[0].author.verified, inline: true },
+                { name: 'View Count', value: formatNumber(serverQueue.songs[0].viewcount), inline: true },
+                { name: 'Subscribers', value: formatNumber(serverQueue.songs[0].author.subscriber_count), inline: true },
+                { name: 'Verified', value: serverQueue.songs[0].author.verified ? '✓' : '✗', inline: true },
             ],
         };
         interaction.followUp({ embeds: [embed] });
