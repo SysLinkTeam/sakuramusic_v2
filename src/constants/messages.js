@@ -57,6 +57,9 @@ YouTube API may be experiencing high load due to time of day or other factors.`,
     // Attachment errors
     ATTACHMENT_EXPIRED: 'Attachment link expired, skipping.',
 
+    // Rate limiting
+    RATE_LIMIT_EXCEEDED: (seconds) => `You're sending commands too fast! Please wait ${seconds} seconds.`,
+
     // Generic errors
     COMMAND_EXECUTION_ERROR: 'There was an error executing that command!',
   },

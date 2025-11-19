@@ -5,7 +5,7 @@ const stream = require('stream');
 const { createAudioResource, AudioPlayerStatus, createAudioPlayer, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const Song = require('../Song');
 const { toHms } = require('../utils');
-const { AUDIO, SEARCH } = require('../config/constants');
+const { AUDIO, SEARCH, QUEUE } = require('../config/constants');
 const { ERRORS, INFO } = require('../constants/messages');
 
 /**
@@ -265,7 +265,16 @@ function setupPlayerHandlers(player, guild, serverQueue, play) {
                 serverQueue.songs.push(serverQueue.songs[0]);
             }
             songcache = serverQueue.songs.shift();
-            if (songcache) serverQueue.history.push(songcache);
+
+            // Add to history with size limit to prevent memory leak
+            if (songcache) {
+                serverQueue.history.push(songcache);
+
+                // Keep only last MAX_HISTORY entries
+                if (serverQueue.history.length > QUEUE.MAX_HISTORY) {
+                    serverQueue.history.shift(); // Remove oldest entry
+                }
+            }
         }
 
         play(guild, serverQueue.songs[0], null, songcache);

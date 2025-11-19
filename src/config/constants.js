@@ -57,6 +57,7 @@ module.exports = {
   QUEUE: {
     MAX_DISPLAY_LENGTH: 1500, // Maximum character length for queue display
     PROGRESS_BAR_BLOCKS: 20,   // Number of blocks in progress bar
+    MAX_HISTORY: 100,          // Maximum history entries to prevent memory leak
   },
 
   // Shuffle

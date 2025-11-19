@@ -26,8 +26,9 @@ const { play } = require('./src/services/musicPlayer');
 const MusicQueue = require('./src/MusicQueue');
 const Song = require('./src/Song');
 const { toHms, parseTime } = require('./src/utils');
+const RateLimiter = require('./src/utils/RateLimiter');
 const { CACHE } = require('./src/config/constants');
-const { INFO } = require('./src/constants/messages');
+const { INFO, ERRORS } = require('./src/constants/messages');
 
 process.env['YTDL_NO_UPDATE'] = true;
 
@@ -35,6 +36,7 @@ process.env['YTDL_NO_UPDATE'] = true;
 const cacheManager = new CacheManager();
 const queuePersistence = new QueuePersistence();
 const ytdlpManager = new YTDLPManager();
+const rateLimiter = new RateLimiter(5, 60000); // 5 commands per 60 seconds
 
 // Initialize cache
 cacheManager.initialize();
@@ -82,19 +84,6 @@ const context = {
     }
 })();
 
-// Global error handler
-process.on('uncaughtException', err => {
-    console.error('Uncaught Exception:', err);
-    if (client && client.destroy) {
-        try {
-            client.destroy();
-        } catch (e) {
-            console.error('Failed to destroy client:', e);
-        }
-    }
-    process.exit(1);
-});
-
 // Bot ready event
 client.once('ready', async () => {
     console.log(`${client.user.username} is now online!`);
@@ -111,20 +100,60 @@ client.once('ready', async () => {
     }
 });
 
-// Interaction handler
+// Interaction handler with rate limiting and improved error handling
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
-    await interaction.deferReply();
-    const command = commands.get(interaction.commandName);
+    // Rate limiting check
+    if (!rateLimiter.take(interaction.user.id)) {
+        const resetTime = Math.ceil(rateLimiter.getResetTime(interaction.user.id) / 1000);
+        try {
+            await interaction.reply({
+                content: ERRORS.RATE_LIMIT_EXCEEDED(resetTime),
+                ephemeral: true
+            });
+        } catch (error) {
+            console.error('[Rate Limit] Failed to send rate limit message:', error.message);
+        }
+        return;
+    }
 
+    // Defer reply with timeout protection
+    try {
+        await interaction.deferReply();
+    } catch (error) {
+        console.error(`[Interaction] Failed to defer reply for ${interaction.commandName}:`, error.message);
+        return; // Interaction already expired or responded
+    }
+
+    const command = commands.get(interaction.commandName);
     if (!command) return;
 
+    // Execute command with timeout and comprehensive error handling
     try {
-        await command.execute(interaction, context);
+        // 14 second timeout (Discord allows 15s total, leaving 1s margin)
+        await Promise.race([
+            command.execute(interaction, context),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Command timeout')), 14000)
+            )
+        ]);
     } catch (error) {
-        console.error(error);
-        interaction.followUp('There was an error executing that command!');
+        // Log error with context
+        console.error(`[Command Error] Command: ${interaction.commandName}, User: ${interaction.user.id}, Guild: ${interaction.guildId || 'DM'}`);
+        console.error(`[Command Error] Message: ${error.message}`);
+
+        // Send user-friendly error message
+        try {
+            if (interaction.deferred && !interaction.replied) {
+                await interaction.followUp({
+                    content: ERRORS.COMMAND_EXECUTION_ERROR,
+                    ephemeral: true
+                });
+            }
+        } catch (followUpError) {
+            console.error('[Command Error] Failed to send error message:', followUpError.message);
+        }
     }
 });
 
@@ -206,4 +235,93 @@ client.login(token).catch(error => {
     console.error('This usually means your bot token is invalid.');
     console.error('Error details:', error.message);
     process.exit(1);
+});
+
+// ================================
+// Graceful Shutdown Handlers
+// ================================
+
+let isShuttingDown = false;
+
+/**
+ * Gracefully shutdown the bot
+ * @param {string} signal - Signal name (SIGTERM, SIGINT, etc.)
+ */
+async function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    console.log(`\n[Shutdown] ${signal} received. Starting graceful shutdown...`);
+
+    try {
+        // 1. Stop accepting new commands
+        console.log('[Shutdown] Removing command listeners...');
+        client.removeAllListeners('interactionCreate');
+
+        // 2. Save all queue data
+        console.log('[Shutdown] Saving queue data...');
+        queuePersistence.save(queue);
+
+        // 3. Save cache data
+        console.log('[Shutdown] Saving cache data...');
+        cacheManager.save();
+
+        // 4. Disconnect from all voice channels
+        console.log('[Shutdown] Disconnecting from voice channels...');
+        for (const [guildId, serverQueue] of queue) {
+            try {
+                if (serverQueue.player) {
+                    serverQueue.player.stop();
+                }
+                if (serverQueue.connection) {
+                    serverQueue.connection.destroy();
+                }
+            } catch (error) {
+                console.error(`[Shutdown] Error disconnecting from guild ${guildId}:`, error.message);
+            }
+        }
+
+        // 5. Clear cron jobs
+        console.log('[Shutdown] Stopping cron jobs...');
+        cron.getTasks().forEach(task => task.stop());
+
+        // 6. Disconnect from Discord (with timeout)
+        console.log('[Shutdown] Logging out from Discord...');
+        await Promise.race([
+            client.destroy(),
+            new Promise(resolve => setTimeout(resolve, 5000))
+        ]);
+
+        console.log('[Shutdown] Graceful shutdown completed successfully');
+        process.exit(0);
+    } catch (error) {
+        console.error('[Shutdown] Error during graceful shutdown:', error);
+        process.exit(1);
+    }
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions with graceful shutdown
+process.on('uncaughtException', async (error) => {
+    console.error('[FATAL] Uncaught Exception:', error);
+
+    try {
+        // Try to save data before exiting
+        queuePersistence.save(queue);
+        cacheManager.save();
+    } catch (saveError) {
+        console.error('[FATAL] Failed to save data during crash:', saveError);
+    }
+
+    process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[ERROR] Unhandled Promise Rejection at:', promise);
+    console.error('[ERROR] Reason:', reason);
+    // Don't exit on unhandled rejection, just log it
 });
