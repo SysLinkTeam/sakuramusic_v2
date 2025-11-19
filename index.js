@@ -16,6 +16,10 @@ const cron = require('node-cron');
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 
+// Load configuration
+const { loadConfig } = require('./src/config/env');
+const config = loadConfig();
+
 // Load services
 const CacheManager = require('./src/services/cacheManager');
 const QueuePersistence = require('./src/services/queuePersistence');
@@ -32,8 +36,8 @@ const { INFO, ERRORS } = require('./src/constants/messages');
 
 process.env['YTDL_NO_UPDATE'] = true;
 
-// Initialize managers
-const cacheManager = new CacheManager();
+// Initialize managers with configuration
+const cacheManager = new CacheManager(config);
 const queuePersistence = new QueuePersistence();
 const ytdlpManager = new YTDLPManager();
 const rateLimiter = new RateLimiter(5, 60000); // 5 commands per 60 seconds

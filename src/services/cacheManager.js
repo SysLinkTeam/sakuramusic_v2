@@ -6,41 +6,40 @@ const { CACHE } = require('../config/constants');
  * Cache Manager - Handles music info caching
  */
 class CacheManager {
-    constructor() {
+    constructor(config = {}) {
         this.cache = new Map(); // Map<videoId, { data: Song, expires: timestamp }>
-        this.enabled = true;
-        this.ramUsageReportEnabled = false;
+        this.enabled = config.cacheEnabled !== undefined ? config.cacheEnabled : true;
+        this.ramUsageReportEnabled = config.ramUsageReportEnabled !== undefined ? config.ramUsageReportEnabled : false;
         this.cacheFilePath = './cache.json';
         this.ttl = CACHE.TTL; // 7 days
     }
 
     /**
-     * Initialize cache from environment and load from file
+     * Initialize cache and display configuration
      */
     initialize() {
-        // Check if cache should be enabled
-        if (process.env.cacheEnabled === "false") {
-            this.enabled = false;
+        // Display cache configuration
+        if (!this.enabled) {
             console.log("-------Cache is disabled-------");
             console.log("Cache will not be saved");
             console.log("Cache will not be loaded on startup");
             console.log("It may increase response time and Network usage but it will reduce RAM usage");
-            console.log("If you want to enable cache, set cacheEnabled to true in .env");
+            console.log("If you want to enable cache, set cacheEnabled=true in .env");
             console.log("-------------------------------");
         } else {
             console.log("-------Cache is enabled-------");
             console.log("Cache will be saved every 5 seconds");
             console.log("Cache will be loaded on startup");
+            console.log("TTL: 7 days for cached entries");
             console.log("It may use a lot of RAM if you have a lot of servers or users but it will reduce response time and reduce Network usage");
 
-            if (process.env.ramUsageReportEnabled === "true") {
-                console.log("ramUsageReportEnabled is enabled. It will show RAM usage report every 5 seconds.");
-                this.ramUsageReportEnabled = true;
+            if (this.ramUsageReportEnabled) {
+                console.log("RAM usage reporting is enabled. It will show RAM usage report every 5 seconds.");
             } else {
-                console.log("if you want to show RAM usage report, set ramUsageReportEnabled to true in .env");
+                console.log("To enable RAM usage reporting, set ramUsageReportEnabled=true in .env");
             }
 
-            console.log("If you want to disable cache, set cacheEnabled to false in .env");
+            console.log("If you want to disable cache, set cacheEnabled=false in .env");
             console.log("-------------------------------");
         }
     }
