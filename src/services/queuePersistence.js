@@ -37,7 +37,8 @@ class QueuePersistence {
                 autoPlay: value.autoPlay,
                 autoPlayPosition: value.autoPlayPosition,
                 paused: value.paused,
-                volume: value.resource && value.resource.volume ? value.resource.volume.volume : AUDIO.DEFAULT_VOLUME
+                volume: value.resource && value.resource.volume ? value.resource.volume.volume : AUDIO.DEFAULT_VOLUME,
+                quality: value.quality || AUDIO.DEFAULT_QUALITY
             };
             i++;
         });
@@ -173,6 +174,7 @@ class QueuePersistence {
                 queueConstruct.autoPlay = value.autoPlay || false;
                 queueConstruct.autoPlayPosition = value.autoPlayPosition || 1;
                 queueConstruct.starttimestamp = value.starttimestamp || 0;
+                queueConstruct.quality = value.quality || AUDIO.DEFAULT_QUALITY;
 
                 queue.set(value.key, queueConstruct);
             }

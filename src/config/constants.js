@@ -7,6 +7,17 @@ module.exports = {
   AUDIO: {
     DEFAULT_VOLUME: 0.2,
     HIGH_WATER_MARK: 1 << 25, // 33,554,432 bytes for streaming buffer
+    DEFAULT_QUALITY: 'high',
+    QUALITY_OPTIONS: {
+      low: 'lowestaudio',
+      medium: 'highestaudio',
+      high: 'highestaudio',
+    },
+    QUALITY_LABELS: {
+      low: 'Low Quality (saves bandwidth)',
+      medium: 'Medium Quality (balanced)',
+      high: 'High Quality (best audio)',
+    }
   },
 
   // Cache and performance thresholds

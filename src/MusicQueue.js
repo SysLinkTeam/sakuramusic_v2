@@ -18,6 +18,7 @@ class MusicQueue {
     this.paused = false;
     this.autoPlay = false;
     this.autoPlayPosition = 1;
+    this.quality = AUDIO.DEFAULT_QUALITY;
   }
 
   addSong(song) {
@@ -83,9 +84,10 @@ class MusicQueue {
       // Create new stream starting at the specified position
       // The `begin` parameter makes ytdl start downloading from that timestamp,
       // avoiding unnecessary data transfer
+      const qualitySetting = AUDIO.QUALITY_OPTIONS[this.quality] || AUDIO.QUALITY_OPTIONS[AUDIO.DEFAULT_QUALITY];
       const stream = ytdl(currentSong.url, {
         filter: 'audioonly',
-        quality: 'highestaudio',
+        quality: qualitySetting,
         highWaterMark: AUDIO.HIGH_WATER_MARK,
         begin: seconds * 1000,
       }).on('error', err => {

@@ -190,12 +190,14 @@ async function createAttachmentResource(url) {
 /**
  * Creates audio resource from YouTube URL
  * @param {string} url - YouTube video URL
+ * @param {string} quality - Quality setting ('low', 'medium', 'high')
  * @returns {Object} Audio resource
  */
-function createYouTubeResource(url) {
+function createYouTubeResource(url, quality = AUDIO.DEFAULT_QUALITY) {
+    const qualitySetting = AUDIO.QUALITY_OPTIONS[quality] || AUDIO.QUALITY_OPTIONS[AUDIO.DEFAULT_QUALITY];
     const stream_ytdl = ytdl(url, {
         filter: 'audioonly',
-        quality: 'highestaudio',
+        quality: qualitySetting,
         highWaterMark: AUDIO.HIGH_WATER_MARK
     });
     return createAudioResource(stream_ytdl, { inlineVolume: true, inputType: stream.type });
@@ -204,13 +206,14 @@ function createYouTubeResource(url) {
 /**
  * Creates appropriate audio resource based on song type
  * @param {Object} song - Song object
+ * @param {string} quality - Quality setting for YouTube videos
  * @returns {Promise<Object>} Audio resource
  */
-async function createAudioResourceForSong(song) {
+async function createAudioResourceForSong(song, quality = AUDIO.DEFAULT_QUALITY) {
     if (song.type === 'attachment') {
         return await createAttachmentResource(song.url);
     } else {
-        return createYouTubeResource(song.url);
+        return createYouTubeResource(song.url, quality);
     }
 }
 
@@ -334,7 +337,7 @@ async function play(guild, song, queue, client, interaction = null, songcache = 
         },
     });
 
-    const resource = await createAudioResourceForSong(song);
+    const resource = await createAudioResourceForSong(song, serverQueue.quality);
     resource.volume.setVolume(AUDIO.DEFAULT_VOLUME);
 
     await player.play(resource);
