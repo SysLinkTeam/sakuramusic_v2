@@ -55,8 +55,67 @@ function validateMusicCommand(interaction, queue, customQueueMessage = null) {
     return { error: null, serverQueue };
 }
 
+/**
+ * Validates that a URL is a valid YouTube URL
+ * @param {string} url - URL to validate
+ * @returns {boolean} True if valid YouTube URL, false otherwise
+ */
+function isValidYouTubeURL(url) {
+    if (!url || typeof url !== 'string') {
+        return false;
+    }
+
+    try {
+        const urlObj = new URL(url);
+
+        // Only allow YouTube domains
+        const allowedDomains = [
+            'www.youtube.com',
+            'youtube.com',
+            'youtu.be',
+            'm.youtube.com',
+            'music.youtube.com'
+        ];
+
+        // Check if hostname is in allowed list
+        if (!allowedDomains.includes(urlObj.hostname)) {
+            return false;
+        }
+
+        // Must use https protocol
+        if (urlObj.protocol !== 'https:') {
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Sanitizes a YouTube URL by validating and normalizing it
+ * @param {string} url - URL to sanitize
+ * @returns {string|null} Sanitized URL or null if invalid
+ */
+function sanitizeYouTubeURL(url) {
+    if (!isValidYouTubeURL(url)) {
+        return null;
+    }
+
+    try {
+        const urlObj = new URL(url);
+        // Return the validated URL
+        return urlObj.href;
+    } catch (error) {
+        return null;
+    }
+}
+
 module.exports = {
     validateUserInVoiceChannel,
     validateQueueExists,
-    validateMusicCommand
+    validateMusicCommand,
+    isValidYouTubeURL,
+    sanitizeYouTubeURL
 };

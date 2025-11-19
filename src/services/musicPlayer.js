@@ -15,12 +15,25 @@ const { ERRORS, INFO } = require('../constants/messages');
  * @returns {Object|null} Next song or null if none available
  */
 function pickNextSong(array, playedsong) {
-    if (array.length == 0 || array.length == 1) return null;
+    // Validate input
+    if (!Array.isArray(array) || array.length === 0 || array.length === 1) {
+        return null;
+    }
 
-    // Filter out the currently played song to avoid infinite recursion
-    const availableSongs = array.filter(song => song.url !== playedsong.url);
+    if (!playedsong || !playedsong.url) {
+        return null;
+    }
 
-    // If all songs have the same URL, return null
+    // Filter out invalid songs and the currently played song
+    const availableSongs = array.filter(song => {
+        return song &&
+               typeof song === 'object' &&
+               song.url &&
+               typeof song.url === 'string' &&
+               song.url !== playedsong.url;
+    });
+
+    // If no valid alternative songs available, return null
     if (availableSongs.length === 0) return null;
 
     // Pick a random song from the available songs
@@ -34,14 +47,49 @@ function pickNextSong(array, playedsong) {
  * @returns {Promise<Object|null>} Song info or null if not found
  */
 async function searchNextAutoplaySong(songcache) {
-    const title = songcache.title.slice(0, songcache.title.length * SEARCH.TITLE_SEARCH_RATIO);
-    let yt_info = await playdl.search(title, {
-        limit: SEARCH.AUTO_PLAY_LIMIT
-    });
+    try {
+        // Validate songcache
+        if (!songcache || !songcache.title || typeof songcache.title !== 'string') {
+            console.error('Invalid songcache provided to searchNextAutoplaySong');
+            return null;
+        }
 
-    if (yt_info.length === 0) return null;
+        const title = songcache.title.slice(0, songcache.title.length * SEARCH.TITLE_SEARCH_RATIO);
 
-    return pickNextSong(yt_info, songcache);
+        // Validate title is not empty after slicing
+        if (!title || title.trim().length === 0) {
+            console.error('Empty title after slicing');
+            return null;
+        }
+
+        let yt_info = await playdl.search(title, {
+            limit: SEARCH.AUTO_PLAY_LIMIT
+        });
+
+        // Validate search results
+        if (!Array.isArray(yt_info)) {
+            console.error('Invalid search results from play-dl');
+            return null;
+        }
+
+        if (yt_info.length === 0) return null;
+
+        // Filter out invalid results
+        yt_info = yt_info.filter(item => {
+            return item &&
+                   typeof item === 'object' &&
+                   item.url &&
+                   typeof item.url === 'string' &&
+                   item.url.length > 0;
+        });
+
+        if (yt_info.length === 0) return null;
+
+        return pickNextSong(yt_info, songcache);
+    } catch (error) {
+        console.error('Error in searchNextAutoplaySong:', error);
+        return null;
+    }
 }
 
 /**
@@ -51,7 +99,20 @@ async function searchNextAutoplaySong(songcache) {
  */
 async function fetchSongInfo(url) {
     try {
+        // Validate URL
+        if (!url || typeof url !== 'string' || url.trim().length === 0) {
+            console.error('Invalid URL provided to fetchSongInfo');
+            return null;
+        }
+
         const songInfo = await ytdl.getInfo(url);
+
+        // Validate songInfo before creating Song
+        if (!songInfo || typeof songInfo !== 'object') {
+            console.error('Invalid songInfo received from ytdl');
+            return null;
+        }
+
         return Song.fromYouTubeInfo(songInfo);
     } catch (error) {
         console.error('Error fetching song info:', error);

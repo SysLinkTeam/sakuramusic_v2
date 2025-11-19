@@ -6,6 +6,7 @@ const playdl = require('play-dl');
 const ytdl = require('ytdl-core');
 const { ERRORS, INFO } = require('../constants/messages');
 const { ATTACHMENT, PLAYLIST } = require('../config/constants');
+const { isValidYouTubeURL, sanitizeYouTubeURL } = require('../validators');
 
 class Play extends BaseCommand {
     constructor() {
@@ -109,16 +110,44 @@ class Play extends BaseCommand {
 
         const musiclist = [];
         let totalTracks = 1;
+
+        // Handle playlists
         if (url.includes('list=') && !url.includes('watch?v=')) {
-            const playlist = await ytpl(url, { limit: Infinity }).catch(error => {
+            // Validate URL before processing
+            if (!isValidYouTubeURL(url)) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            const sanitizedUrl = sanitizeYouTubeURL(url);
+            if (!sanitizedUrl) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            // Fetch playlist with size limit to prevent DoS
+            const playlist = await ytpl(sanitizedUrl, { limit: PLAYLIST.MAX_SIZE }).catch(error => {
                 console.error(error);
                 interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
             });
             if (!playlist) return;
-            musiclist.push(...playlist.items.map(x => x.url.substring(0, x.url.indexOf("&list="))));
-            totalTracks = playlist.items.length;
+
+            // Check if playlist exceeds max size
+            if (playlist.items.length > PLAYLIST.MAX_SIZE) {
+                return interaction.followUp(ERRORS.PLAYLIST_TOO_LARGE(PLAYLIST.MAX_SIZE));
+            }
+
+            // Validate and sanitize each URL in the playlist
+            for (const item of playlist.items) {
+                const itemUrl = item.url.substring(0, item.url.indexOf("&list="));
+                if (isValidYouTubeURL(itemUrl)) {
+                    musiclist.push(itemUrl);
+                }
+            }
+            totalTracks = musiclist.length;
         } else {
+            // Handle single video or search query
             let errorFLG = false;
+
+            // If it's not a YouTube URL, treat it as a search query
             if (!url.includes('youtube.com') && !url.includes('youtu.be/')) {
                 const yt_info = await playdl.search(url, { limit: 1 }).catch(async error => {
                     errorFLG = true;
@@ -128,7 +157,18 @@ class Play extends BaseCommand {
                 if (yt_info.length == 0) return interaction.followUp(ERRORS.YOUTUBE_FETCH_FAILED);
                 url = yt_info[0].url;
             }
-            musiclist.push(url);
+
+            // Validate the final URL
+            if (!isValidYouTubeURL(url)) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            const sanitizedUrl = sanitizeYouTubeURL(url);
+            if (!sanitizedUrl) {
+                return interaction.followUp(ERRORS.INVALID_URL);
+            }
+
+            musiclist.push(sanitizedUrl);
         }
 
         let song;

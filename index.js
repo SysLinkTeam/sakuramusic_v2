@@ -1,21 +1,13 @@
+// Check for required dependencies
 try {
-    const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
+    require('discord.js');
 } catch (e) {
-    if (e.code !== 'MODULE_NOT_FOUND') {
-        throw e;
-    }
-    console.log("Installing dependencies...")
-    const { execSync } = require('child_process');
-    try {
-        execSync('npm install', { stdio: 'inherit' });
-        console.log("Dependencies installed. restarting...");
-        require('child_process').execSync('node index.js', { stdio: 'inherit' });
-        process.exit();
-    } catch (err) {
-        console.log("Failed to install dependencies.");
-        console.error(err);
+    if (e.code === 'MODULE_NOT_FOUND') {
+        console.error('ERROR: Required dependencies are not installed.');
+        console.error('Please run: npm install');
         process.exit(1);
     }
+    throw e;
 }
 
 const fs = require('fs');
@@ -192,6 +184,26 @@ cron.schedule(CACHE.AUTO_SAVE_INTERVAL, async () => {
     context.cacheEnabled = cacheManager.enabled;
 });
 
-// Login
+// Login with token validation
 const token = process.env.token;
-client.login(token);
+
+if (!token || typeof token !== 'string' || token.trim().length === 0) {
+    console.error('ERROR: Discord bot token is missing or invalid.');
+    console.error('Please set the "token" variable in your .env file.');
+    console.error('Example: token=YOUR_BOT_TOKEN_HERE');
+    process.exit(1);
+}
+
+// Basic token format validation (Discord tokens are typically 59-72 characters)
+if (token.length < 50) {
+    console.error('ERROR: Discord bot token appears to be invalid (too short).');
+    console.error('Please check your .env file and ensure the token is correct.');
+    process.exit(1);
+}
+
+client.login(token).catch(error => {
+    console.error('ERROR: Failed to login to Discord.');
+    console.error('This usually means your bot token is invalid.');
+    console.error('Error details:', error.message);
+    process.exit(1);
+});

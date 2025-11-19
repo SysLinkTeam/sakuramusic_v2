@@ -17,6 +17,7 @@ module.exports = {
 
   // Playlist batch processing limits
   PLAYLIST: {
+    MAX_SIZE: 500,             // Maximum playlist size to prevent DoS
     BATCH_LIMIT_SMALL: 300,    // Below this: process all at once
     BATCH_LIMIT_MEDIUM: 1000,  // Below this: batch size of 5
     BATCH_SIZE_MEDIUM: 5,      // Batch size for medium playlists

@@ -45,7 +45,7 @@ class CacheManager {
     }
 
     /**
-     * Load cache from file
+     * Load cache from file with backup recovery
      */
     load() {
         if (!this.enabled) return;
@@ -55,22 +55,93 @@ class CacheManager {
         }
 
         try {
-            this.cache = JSON.parse(fs.readFileSync(this.cacheFilePath, 'utf8'), this.reviver);
+            const fileContent = fs.readFileSync(this.cacheFilePath, 'utf8');
+            this.cache = JSON.parse(fileContent, this.reviver);
+
+            // Validate that cache is a Map
+            if (!(this.cache instanceof Map)) {
+                throw new Error('Cache is not a Map instance');
+            }
         } catch (error) {
             console.error('Error loading cache:', error);
-            this.cache = new Map();
+
+            // Try to load from backup
+            const backupFile = this.cacheFilePath + '.backup';
+            if (fs.existsSync(backupFile)) {
+                console.log('Attempting to restore cache from backup...');
+                try {
+                    const backupContent = fs.readFileSync(backupFile, 'utf8');
+                    this.cache = JSON.parse(backupContent, this.reviver);
+
+                    if (!(this.cache instanceof Map)) {
+                        throw new Error('Backup cache is not a Map instance');
+                    }
+
+                    console.log('Cache successfully restored from backup');
+
+                    // Restore the main file from backup
+                    fs.copyFileSync(backupFile, this.cacheFilePath);
+                } catch (backupError) {
+                    console.error('Error loading from backup:', backupError);
+                    this.cache = new Map();
+                }
+            } else {
+                this.cache = new Map();
+            }
         }
     }
 
     /**
-     * Save cache to file
+     * Save cache to file using atomic write
      */
     save() {
         if (!this.enabled) return;
 
-        fs.writeFile(this.cacheFilePath, JSON.stringify(this.cache, this.replacer), (err) => {
-            if (err) console.error('Error saving cache:', err);
-        });
+        try {
+            const jsonData = JSON.stringify(this.cache, this.replacer, 2);
+
+            // Atomic write: write to temp file, then rename
+            const tempFile = this.cacheFilePath + '.tmp';
+            const backupFile = this.cacheFilePath + '.backup';
+
+            // Create backup of existing file if it exists
+            if (fs.existsSync(this.cacheFilePath)) {
+                try {
+                    fs.copyFileSync(this.cacheFilePath, backupFile);
+                } catch (backupErr) {
+                    console.error('Error creating cache backup:', backupErr);
+                    // Continue anyway - backup is best effort
+                }
+            }
+
+            // Write to temp file
+            fs.writeFileSync(tempFile, jsonData, 'utf8');
+
+            // Atomic rename
+            fs.renameSync(tempFile, this.cacheFilePath);
+
+            // Clean up old backup after successful write
+            if (fs.existsSync(backupFile)) {
+                try {
+                    fs.unlinkSync(backupFile);
+                } catch (cleanupErr) {
+                    // Ignore cleanup errors
+                }
+            }
+        } catch (err) {
+            console.error('Error saving cache:', err);
+
+            // Try to restore from backup if available
+            const backupFile = this.cacheFilePath + '.backup';
+            if (fs.existsSync(backupFile)) {
+                try {
+                    fs.copyFileSync(backupFile, this.cacheFilePath);
+                    console.log('Cache restored from backup after save failure');
+                } catch (restoreErr) {
+                    console.error('Error restoring cache from backup:', restoreErr);
+                }
+            }
+        }
     }
 
     /**

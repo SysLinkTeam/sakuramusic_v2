@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const { https } = require('follow-redirects');
 const { YTDLP, DEFAULT_USER_AGENT } = require('../config/constants');
 
@@ -7,8 +8,35 @@ const { YTDLP, DEFAULT_USER_AGENT } = require('../config/constants');
  */
 class YTDLPManager {
     constructor() {
-        this.filename = this.getPlatformFilename();
+        this.filename = this.validateAndGetFilename(this.getPlatformFilename());
         this.userAgent = process.env.userAgent || DEFAULT_USER_AGENT;
+    }
+
+    /**
+     * Validate filename to prevent path traversal attacks
+     * @param {string} filename - Filename to validate
+     * @returns {string} Validated filename
+     * @throws {Error} If filename is invalid or contains path traversal
+     */
+    validateAndGetFilename(filename) {
+        if (!filename || typeof filename !== 'string') {
+            throw new Error('Invalid filename provided');
+        }
+
+        // Use path.basename to strip any directory components
+        const sanitized = path.basename(filename);
+
+        // Additional validation: ensure no path traversal sequences
+        if (sanitized !== filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+            throw new Error('Invalid filename: path traversal detected');
+        }
+
+        // Ensure filename matches expected pattern
+        if (!/^yt-dlp(_[a-z0-9]+)?(\.(exe|app))?$/i.test(sanitized)) {
+            throw new Error('Invalid filename format');
+        }
+
+        return sanitized;
     }
 
     /**
@@ -69,13 +97,17 @@ class YTDLPManager {
                 }
             };
 
+            // Use path.join for safe file path construction
+            const filePath = path.join(process.cwd(), this.filename);
+            const versionFilePath = path.resolve(YTDLP.VERSION_FILE);
+
             https.get(downloadUrl, options, (res) => {
-                const writeStream = fs.createWriteStream('./' + this.filename);
+                const writeStream = fs.createWriteStream(filePath);
 
                 res.pipe(writeStream).on('finish', () => {
                     console.log("yt-dlp downloaded!");
-                    fs.chmodSync('./' + this.filename, 0o755);
-                    fs.writeFileSync(YTDLP.VERSION_FILE, version);
+                    fs.chmodSync(filePath, 0o755);
+                    fs.writeFileSync(versionFilePath, version);
                     console.log("yt-dlp version: " + version);
                     resolve();
                 }).on('error', reject);
@@ -99,7 +131,8 @@ class YTDLPManager {
      * @returns {boolean}
      */
     binaryExists() {
-        return fs.existsSync('./' + this.filename);
+        const filePath = path.join(process.cwd(), this.filename);
+        return fs.existsSync(filePath);
     }
 
     /**
@@ -124,10 +157,21 @@ class YTDLPManager {
         console.log("getting latest yt-dlp...");
 
         const release = await this.fetchLatestRelease();
+
+        // Validate release data
+        if (!release || !release.assets || !Array.isArray(release.assets)) {
+            throw new Error('Invalid release data received from GitHub API');
+        }
+
         const asset = release.assets.find(asset => asset.name === this.filename);
 
         if (!asset) {
             throw new Error(`No asset found for ${this.filename}`);
+        }
+
+        // Validate asset URL
+        if (!asset.url || typeof asset.url !== 'string' || !asset.url.startsWith('https://')) {
+            throw new Error('Invalid asset URL received from GitHub API');
         }
 
         console.log("downloading yt-dlp...");
@@ -146,11 +190,20 @@ class YTDLPManager {
         try {
             const release = await this.fetchLatestRelease();
 
+            // Validate release data
+            if (!release || !release.assets || !Array.isArray(release.assets) || !release.tag_name) {
+                throw new Error('Invalid release data received from GitHub API');
+            }
+
             if (release.tag_name !== currentVersion) {
                 console.log("updating yt-dlp...");
                 const asset = release.assets.find(asset => asset.name === this.filename);
 
                 if (asset) {
+                    // Validate asset URL
+                    if (!asset.url || typeof asset.url !== 'string' || !asset.url.startsWith('https://')) {
+                        throw new Error('Invalid asset URL received from GitHub API');
+                    }
                     await this.downloadBinary(asset.url, release.tag_name);
                     console.log("yt-dlp updated!");
                 }
